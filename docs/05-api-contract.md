@@ -145,3 +145,104 @@ stateless (без чёрного списка токенов), для клиен
 | Код | Причина | Body |
 |---|---|---|
 | 401 | Токен отсутствует или невалиден | `{"detail": "Not authenticated"}` |
+
+---
+
+## Item — модель данных
+
+| Поле | Тип | Описание |
+|---|---|---|
+| id | int | Уникальный идентификатор |
+| name | string | Название позиции |
+| price | float | Цена в рублях |
+| category | string | Категория (например, `eggs`, `baking`, `services`) |
+| item_type | string | `product` \| `service` |
+| stock_quantity | int \| null | Только для `product`, ≥ 0 (REQ-CAT-002a) |
+| duration_days | int \| null | Только для `service`, > 0 (REQ-CAT-002a) |
+
+> **Допущение v1:** отдельного CRUD для управления товарами через API нет.
+> Каталог наполняется через `seed.py` / напрямую через pgAdmin. Admin-CRUD
+> (`POST/PUT/DELETE /api/items`) — кандидат на v2, вместе с полноценной ролью admin в UI.
+
+---
+
+## GET /api/items
+
+Список позиций каталога (REQ-CAT-001, REQ-CAT-003, REQ-CAT-004).
+Доступен без авторизации (OQ-001).
+
+**Request headers:** нет
+
+**Query-параметры (все необязательные):**
+
+| Параметр | Тип | Описание |
+|---|---|---|
+| item_type | string | Фильтр `product` \| `service` |
+| category | string | Фильтр по категории |
+| min_price | float | Нижняя граница цены |
+| max_price | float | Верхняя граница цены |
+| search | string | Поиск по названию, без учёта регистра (REQ-CAT-003, OQ-004) |
+
+**Response 200 OK:**
+```json
+[
+  {
+    "id": 1,
+    "name": "Яйца куриные (десяток)",
+    "price": 120,
+    "category": "eggs",
+    "item_type": "product",
+    "stock_quantity": 50,
+    "duration_days": null
+  },
+  {
+    "id": 4,
+    "name": "Оформление праздничного стола",
+    "price": 3500,
+    "category": "services",
+    "item_type": "service",
+    "stock_quantity": null,
+    "duration_days": 2
+  }
+]
+```
+Пустой каталог или отсутствие совпадений по фильтру — это не ошибка: возвращается `200 OK` с `[]`.
+
+**Errors:**
+
+| Код | Причина | Body |
+|---|---|---|
+| 422 | Некорректное значение параметра (например, `item_type=banana`) | стандартный FastAPI validation error |
+
+---
+
+## GET /api/items/{id}
+
+Карточка одной позиции (REQ-CAT-005).
+
+**Request headers:** нет
+
+**Response 200 OK:**
+```json
+{
+  "id": 1,
+  "name": "Яйца куриные (десяток)",
+  "price": 120,
+  "category": "eggs",
+  "item_type": "product",
+  "stock_quantity": 50,
+  "duration_days": null
+}
+```
+
+**Errors:**
+
+| Код | Причина | Body |
+|---|---|---|
+| 404 | Позиция с таким id не существует | `{"detail": "Item not found"}` |
+| 422 | id не является целым числом | стандартный FastAPI validation error |
+
+> **QA-заметка:** `GET /shop/items/{id}` (HTML-версия той же карточки, см. `03-architecture.md`)
+> должна при отсутствии товара отдавать не JSON 404, а полноценную HTML-страницу с сообщением
+> "Товар не найден" и тем же кодом 404 в заголовке ответа. Это отдельный тест-кейс на согласованность
+> API и UI.
