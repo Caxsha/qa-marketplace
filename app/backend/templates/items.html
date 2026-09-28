@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Витрина - Магазин мамы{% endblock %}
+
+{% block content %}
+<h2>Каталог товаров и услуг</h2>
+<div class="items-grid">
+    {% for item in items %}
+    <div class="item-card">
+        <h3>{{ item.name }}</h3>
+        <p class="price">{{ item.price }} ₽</p>
+        <p class="category">Категория: {{ item.category }}</p>
+        <p class="type">Тип: {{ "Товар" if item.item_type == "product" else "Услуга" }}</p>
+        {% if item.stock_quantity is not none %}
+            <p class="stock">В наличии: {{ item.stock_quantity }} шт.</p>
+        {% endif %}
+        {% if item.duration_days is not none %}
+            <p class="duration">Срок выполнения: {{ item.duration_days }} дн.</p>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

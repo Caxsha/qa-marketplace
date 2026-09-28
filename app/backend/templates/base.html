@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Магазин мамы{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <h1 class="logo">Магазин мамы</h1>
+        </div>
+    </header>
+    <main class="container content">
+        {% block content %}{% endblock %}
+    </main>
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2026 Магазин мамы. Все права защищены.</p>
+        </div>
+    </footer>
+</body>
+</html>
