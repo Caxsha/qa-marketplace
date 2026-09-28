@@ -40,7 +40,11 @@ def get_item(item_id: int, db: Session = Depends(get_db)):
 @app.get("/shop")
 def shop_page(request: Request, db: Session = Depends(get_db)):
     items = db.query(ItemORM).all()
-    return templates.TemplateResponse("items.html", {"request": request, "items": items})
+    return templates.TemplateResponse(
+        request=request,
+        name="items.html",
+        context={"items": items}
+    )
 
 
 @app.get("/")
