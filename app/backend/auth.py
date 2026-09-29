@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 from app.backend.database import get_db
 from app.backend.db_models import UserORM
 
+
+
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-secret-change-me")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_SECONDS = 24 * 60 * 60
@@ -40,6 +42,21 @@ def decode_access_token(token: str) -> Optional[int]:
     except (JWTError, ValueError, TypeError):
         return None
 
+def get_current_user_optional(request: Request, db: Session = Depends(get_db)) -> Optional[UserORM]:
+    token = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.removeprefix("Bearer ")
+    if token is None:
+        token = request.cookies.get("access_token")
+    if token is None:
+        return None
+
+    user_id = decode_access_token(token)
+    if user_id is None:
+        return None
+
+    return db.query(UserORM).filter(UserORM.id == user_id).first()
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> UserORM:
     token = None

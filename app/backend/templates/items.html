@@ -3,21 +3,150 @@
 {% block title %}Витрина - Магазин мамы{% endblock %}
 
 {% block content %}
-<h2>Каталог товаров и услуг</h2>
-<div class="items-grid">
-    {% for item in items %}
-    <div class="item-card">
-        <h3>{{ item.name }}</h3>
-        <p class="price">{{ item.price }} ₽</p>
-        <p class="category">Категория: {{ item.category }}</p>
-        <p class="type">Тип: {{ "Товар" if item.item_type == "product" else "Услуга" }}</p>
-        {% if item.stock_quantity is not none %}
-            <p class="stock">В наличии: {{ item.stock_quantity }} шт.</p>
-        {% endif %}
-        {% if item.duration_days is not none %}
-            <p class="duration">Срок выполнения: {{ item.duration_days }} дн.</p>
-        {% endif %}
+<!-- Hero-блок -->
+<section class="hero-section">
+    <div class="container hero-container">
+        <div class="hero-content">
+            <div class="badge-pill">🍃 Все с душой и теплом</div>
+            <h1>Домашние продукты<br>и услуги от Надежды</h1>
+            <p class="hero-subtitle">
+                Настоящая домашняя выпечка, яйца от своих кур и помощь с праздничным столом — всё как будто от мамы, потому что это и правда так.
+            </p>
+            <div class="hero-actions">
+                <a href="#catalog" class="btn btn-primary">Смотреть каталог →</a>
+                <a href="#how-it-works" class="btn btn-outline">Как это работает</a>
+            </div>
+            <ul class="hero-features">
+                <li>🚗 Доставка или самовывоз</li>
+                <li>💳 Оплата после подтверждения</li>
+                <li>🤎 Всё честно и по-домашнему</li>
+            </ul>
+        </div>
+        <div class="hero-image-wrapper">
+            <img src="https://placehold.co/500x500/e8dfd8/4a3427?text=Семейная+кухня" alt="Домашняя кухня" class="hero-blob-img">
+        </div>
     </div>
-    {% endfor %}
-</div>
+</section>
+
+<!-- Категории -->
+<section class="section categories-section">
+    <div class="container">
+        <h2 class="section-title">Что у нас есть</h2>
+        <p class="section-subtitle">Выбирайте то, что нужно именно вам</p>
+
+        <div class="category-grid">
+            <div class="category-card">
+                <img src="https://placehold.co/400x300/d8cfc0/4a3427?text=Продукты" class="category-image" alt="Продукты">
+                <div class="category-body">
+                    <h3>🥚 Продукты</h3>
+                    <p>Яйца от домашних кур, свежая выпечка, варенье и другие домашние вкусности</p>
+                    <a href="#catalog" class="category-link">Смотреть →</a>
+                </div>
+            </div>
+            <div class="category-card">
+                <img src="https://placehold.co/400x300/d8cfc0/4a3427?text=Услуги" class="category-image" alt="Услуги">
+                <div class="category-body">
+                    <h3>🎪 Услуги</h3>
+                    <p>Оформление праздничного стола и консультации по меню для любого события</p>
+                    <a href="#catalog" class="category-link">Смотреть →</a>
+                </div>
+            </div>
+            <div class="category-card">
+                <img src="https://placehold.co/400x300/2b2320/c29b68?text=Наборы" class="category-image" alt="Подарочные наборы">
+                <div class="category-body">
+                    <h3>🎁 Подарочные наборы</h3>
+                    <p>Красиво упакованные корзины с домашними продуктами — идеальный подарок</p>
+                    <a href="#catalog" class="category-link">Смотреть →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Популярные позиции -->
+<section id="catalog" class="section catalog-section">
+    <div class="container">
+        <h2 class="section-title">Популярные позиции</h2>
+        <p class="section-subtitle">Чаще всего заказывают — проверено временем</p>
+
+        <div class="items-grid-popular">
+            {% for item in items[:6] %}
+            <div class="item-card">
+                <div class="item-card-header">
+                    {% if item.item_type == 'service' %}
+                        <span class="badge badge-service">Услуга</span>
+                    {% else %}
+                        <span class="badge badge-product">Товар</span>
+                    {% endif %}
+                    <span class="item-icon">
+                        {% if 'яйц' in item.name.lower() %}🥚
+                        {% elif 'варень' in item.name.lower() %}🍯
+                        {% elif 'ватрушк' in item.name.lower() %}🧁
+                        {% elif 'торт' in item.name.lower() or 'пирог' in item.name.lower() or 'круассан' in item.name.lower() %}🍰
+                        {% elif item.item_type == 'service' %}🎉
+                        {% else %}✨{% endif %}
+                    </span>
+                </div>
+                <h3>{{ item.name }}</h3>
+                <div class="item-price">{{ item.price }} ₽</div>
+
+                <div class="item-meta">
+                    {% if item.stock_quantity is not none %}
+                        <small class="stock-info">
+                            {% if item.stock_quantity > 0 %}
+                                Есть в наличии
+                            {% else %}
+                                Нет в наличии
+                            {% endif %}
+                        </small>
+                    {% endif %}
+                    {% if item.duration_days is not none %}
+                        <small class="stock-info">⏱ За {{ item.duration_days }} дн.</small>
+                    {% endif %}
+                </div>
+
+                <button class="btn btn-card {% if item.item_type == 'service' %}btn-service{% endif %}"
+                        {% if item.stock_quantity == 0 %}disabled{% endif %}>
+                    {% if item.stock_quantity == 0 %}Нет
+                    {% elif item.item_type == 'service' %}Заказать
+                    {% else %}В корзину{% endif %}
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="view-catalog-wrapper">
+            <a href="/shop" class="btn btn-outline">Весь каталог →</a>
+        </div>
+    </div>
+</section>
+
+<!-- Как это работает -->
+<section id="how-it-works" class="section steps-section">
+    <div class="container">
+        <h2 class="section-title text-center">Как это работает</h2>
+        <p class="section-subtitle text-center">Всё просто и по-человечески — без лишней бюрократии</p>
+
+        <div class="steps-grid">
+            <div class="step-item">
+                <div class="step-icon-circle">🛍️</div>
+                <span class="step-number">ШАГ 01</span>
+                <h4>Выбираете товар или услугу</h4>
+                <p>Смотрите каталог, добавляйте в корзину или пишите напрямую — как удобно.</p>
+            </div>
+            <div class="step-item">
+                <div class="step-icon-circle">📬</div>
+                <span class="step-number">ШАГ 02</span>
+                <h4>Оформляете заказ</h4>
+                <p>Выбираете доставку или самовывоз. Я свяжусь с вами для подтверждения.</p>
+            </div>
+            <div class="step-item">
+                <div class="step-icon-circle">💌</div>
+                <span class="step-number">ШАГ 03</span>
+                <h4>Оплачиваете после подтверждения</h4>
+                <p>Перевод на карту только после того, как я подтвердила заказ.</p>
+            </div>
+        </div>
+    </div>
+</section>
 {% endblock %}
