@@ -44,6 +44,7 @@ if db.query(ItemORM).count() == 0:
         db.add(ItemORM(
             id=item["id"],
             name=item["name"],
+            description=item["description"],
             price=item["price"],
             id_category=category.id,
             id_item_type=item_type.id,

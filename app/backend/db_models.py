@@ -42,8 +42,6 @@ class UserORM(Base):
 
     @property
     def role(self):
-        """Отдаёт имя роли строкой — так Pydantic-схема UserOut не замечает,
-        что под капотом теперь FK на отдельную таблицу, а не enum-колонка."""
         return self.role_rel.role_name
 
 
@@ -52,6 +50,7 @@ class ItemORM(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
     price = Column(Float, nullable=False)
     id_category = Column(Integer, ForeignKey("categories.id"), nullable=False)
     id_item_type = Column(Integer, ForeignKey("item_types.id"), nullable=False)
@@ -68,3 +67,23 @@ class ItemORM(Base):
     @property
     def item_type(self):
         return self.item_type_rel.name
+
+
+class CartORM(Base):
+    __tablename__ = "carts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+
+    items_rel = relationship("CartItemORM", cascade="all, delete-orphan")
+
+
+class CartItemORM(Base):
+    __tablename__ = "cart_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    cart_id = Column(Integer, ForeignKey("carts.id"), nullable=False)
+    item_id = Column(Integer, ForeignKey("items.id"), nullable=False)
+    quantity = Column(Integer, nullable=False, default=1)
+
+    item_rel = relationship("ItemORM")

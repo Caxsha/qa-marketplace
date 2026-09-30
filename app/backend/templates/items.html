@@ -13,7 +13,7 @@
                 Настоящая домашняя выпечка, яйца от своих кур и помощь с праздничным столом — всё как будто от мамы, потому что это и правда так.
             </p>
             <div class="hero-actions">
-                <a href="#catalog" class="btn btn-primary">Смотреть каталог →</a>
+                <a href="/shop/catalog" class="btn btn-primary">Смотреть каталог →</a>
                 <a href="#how-it-works" class="btn btn-outline">Как это работает</a>
             </div>
             <ul class="hero-features">
@@ -40,7 +40,7 @@
                 <div class="category-body">
                     <h3>🥚 Продукты</h3>
                     <p>Яйца от домашних кур, свежая выпечка, варенье и другие домашние вкусности</p>
-                    <a href="#catalog" class="category-link">Смотреть →</a>
+                    <a href="/shop/catalog" class="category-link">Смотреть →</a>
                 </div>
             </div>
             <div class="category-card">
@@ -48,7 +48,7 @@
                 <div class="category-body">
                     <h3>🎪 Услуги</h3>
                     <p>Оформление праздничного стола и консультации по меню для любого события</p>
-                    <a href="#catalog" class="category-link">Смотреть →</a>
+                    <a href="/shop/catalog" class="category-link">Смотреть →</a>
                 </div>
             </div>
             <div class="category-card">
@@ -56,7 +56,7 @@
                 <div class="category-body">
                     <h3>🎁 Подарочные наборы</h3>
                     <p>Красиво упакованные корзины с домашними продуктами — идеальный подарок</p>
-                    <a href="#catalog" class="category-link">Смотреть →</a>
+                    <a href="/shop/catalog" class="category-link">Смотреть →</a>
                 </div>
             </div>
         </div>
@@ -71,52 +71,12 @@
 
         <div class="items-grid-popular">
             {% for item in items[:6] %}
-            <div class="item-card">
-                <div class="item-card-header">
-                    {% if item.item_type == 'service' %}
-                        <span class="badge badge-service">Услуга</span>
-                    {% else %}
-                        <span class="badge badge-product">Товар</span>
-                    {% endif %}
-                    <span class="item-icon">
-                        {% if 'яйц' in item.name.lower() %}🥚
-                        {% elif 'варень' in item.name.lower() %}🍯
-                        {% elif 'ватрушк' in item.name.lower() %}🧁
-                        {% elif 'торт' in item.name.lower() or 'пирог' in item.name.lower() or 'круассан' in item.name.lower() %}🍰
-                        {% elif item.item_type == 'service' %}🎉
-                        {% else %}✨{% endif %}
-                    </span>
-                </div>
-                <h3>{{ item.name }}</h3>
-                <div class="item-price">{{ item.price }} ₽</div>
-
-                <div class="item-meta">
-                    {% if item.stock_quantity is not none %}
-                        <small class="stock-info">
-                            {% if item.stock_quantity > 0 %}
-                                Есть в наличии
-                            {% else %}
-                                Нет в наличии
-                            {% endif %}
-                        </small>
-                    {% endif %}
-                    {% if item.duration_days is not none %}
-                        <small class="stock-info">⏱ За {{ item.duration_days }} дн.</small>
-                    {% endif %}
-                </div>
-
-                <button class="btn btn-card {% if item.item_type == 'service' %}btn-service{% endif %}"
-                        {% if item.stock_quantity == 0 %}disabled{% endif %}>
-                    {% if item.stock_quantity == 0 %}Нет
-                    {% elif item.item_type == 'service' %}Заказать
-                    {% else %}В корзину{% endif %}
-                </button>
-            </div>
+                {% include "_item_card.html" %}
             {% endfor %}
         </div>
 
         <div class="view-catalog-wrapper">
-            <a href="/shop" class="btn btn-outline">Весь каталог →</a>
+            <a href="/shop/catalog" class="btn btn-outline">Весь каталог →</a>
         </div>
     </div>
 </section>

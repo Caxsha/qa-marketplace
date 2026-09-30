@@ -1,0 +1,51 @@
+<div class="item-card">
+    <a href="/shop/items/{{ item.id }}" class="item-card-link">
+        <div class="item-card-header">
+            {% if item.item_type == 'service' %}
+                <span class="badge badge-service">Услуга</span>
+            {% else %}
+                <span class="badge badge-product">Товар</span>
+            {% endif %}
+            <span class="item-icon">
+                {% if 'яйц' in item.name.lower() %}🥚
+                {% elif 'варень' in item.name.lower() %}🍯
+                {% elif 'ватрушк' in item.name.lower() or 'сырник' in item.name.lower() %}🧁
+                {% elif 'торт' in item.name.lower() or 'пирог' in item.name.lower() or 'круассан' in item.name.lower() %}🍰
+                {% elif 'хлеб' in item.name.lower() %}🍞
+                {% elif item.item_type == 'service' %}🎉
+                {% else %}✨{% endif %}
+            </span>
+        </div>
+        <h3>{{ item.name }}</h3>
+        <div class="item-category">{{ item.category }}</div>
+
+        {% if item.item_type == 'service' %}
+            <div class="item-price">от {{ item.price|int }} ₽</div>
+        {% else %}
+            <div class="item-price">{{ item.price|int }} ₽</div>
+        {% endif %}
+
+        <div class="item-meta">
+            {% if item.stock_quantity is not none %}
+                <small class="stock-info">
+                    {% if item.stock_quantity > 5 %}Есть в наличии
+                    {% elif item.stock_quantity > 0 %}Осталось {{ item.stock_quantity }} шт.
+                    {% else %}Нет в наличии{% endif %}
+                </small>
+            {% endif %}
+            {% if item.duration_days is not none %}
+                <small class="stock-info">⏱ За {{ item.duration_days }} дн.</small>
+            {% endif %}
+        </div>
+    </a>
+
+    <form method="post" action="/shop/cart/add">
+    <input type="hidden" name="item_id" value="{{ item.id }}">
+    <button type="submit" class="btn btn-card {% if item.item_type == 'service' %}btn-service{% endif %}"
+            {% if item.stock_quantity == 0 %}disabled{% endif %}>
+        {% if item.stock_quantity == 0 %}Нет
+        {% elif item.item_type == 'service' %}Заказать
+        {% else %}В корзину{% endif %}
+    </button>
+</form>
+</div>

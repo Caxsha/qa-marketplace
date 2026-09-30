@@ -1,39 +1,53 @@
 from typing import List, Optional
-from fastapi import FastAPI, Query, Depends, Request, HTTPException
+from fastapi import FastAPI, Query, Depends, Request, HTTPException, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.backend.models import Item, ItemType
-from app.backend.db_models import ItemORM, ItemTypeORM
 from app.backend.database import get_db
-from app.backend.routers.auth import router as auth_router
-
-from fastapi import Form
-from fastapi.responses import RedirectResponse
-from app.backend.db_models import ItemORM, ItemTypeORM, UserORM, RoleORM
+from app.backend.db_models import ItemORM, ItemTypeORM, CategoryORM, UserORM, RoleORM
+from app.backend.services.items_service import query_items
+from app.backend.services.cart_service import (
+    get_or_create_cart, build_cart_response, add_item_to_cart,
+    update_item_quantity, remove_item_from_cart,
+)
 from app.backend.auth import (
     verify_password, hash_password, create_access_token,
     get_current_user_optional, ACCESS_TOKEN_EXPIRE_SECONDS, COOKIE_SECURE,
 )
+from app.backend.routers.auth import router as auth_router
+from app.backend.routers.cart import router as cart_router
 
-app = FastAPI(title="Магазин мамы", version="0.4.0")
+app = FastAPI(title="Магазин мамы", version="0.5.0")
 
 app.mount("/static", StaticFiles(directory="app/backend/static"), name="static")
 templates = Jinja2Templates(directory="app/backend/templates")
 
 app.include_router(auth_router)
+app.include_router(cart_router)
 
+
+# --- Items API ---
 
 @app.get("/api/items", response_model=List[Item], tags=["items"])
 def get_items(
     item_type: Optional[ItemType] = Query(None),
+    category: Optional[List[str]] = Query(None),
+    min_price: Optional[float] = Query(None),
+    max_price: Optional[float] = Query(None),
+    search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
-    query = db.query(ItemORM).join(ItemTypeORM, ItemORM.id_item_type == ItemTypeORM.id)
-    if item_type is not None:
-        query = query.filter(ItemTypeORM.name == item_type.value)
-    return query.all()
+    return query_items(
+        db,
+        item_type=item_type.value if item_type else None,
+        categories=category,
+        min_price=min_price,
+        max_price=max_price,
+        search=search,
+    )
 
 
 @app.get("/api/items/{item_id}", response_model=Item, tags=["items"])
@@ -44,20 +58,62 @@ def get_item(item_id: int, db: Session = Depends(get_db)):
     return item
 
 
+# --- Web: витрина, каталог, карточка товара ---
+
 @app.get("/shop")
 def shop_page(request: Request, db: Session = Depends(get_db)):
     items = db.query(ItemORM).all()
     return templates.TemplateResponse(
-        request=request,
-        name="items.html",
-        context={"items": items}
+        request=request, name="items.html", context={"items": items}
     )
+
+
+@app.get("/shop/catalog")
+def catalog_page(
+    request: Request,
+    item_type: Optional[str] = Query(None),
+    category: Optional[List[str]] = Query(None),
+    max_price: float = Query(5000),
+    search: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+):
+    all_categories = db.query(CategoryORM).all()
+    items = query_items(db, item_type=item_type, categories=category, max_price=max_price, search=search)
+    return templates.TemplateResponse(
+        request=request,
+        name="catalog.html",
+        context={
+            "items": items,
+            "all_categories": all_categories,
+            "selected_categories": category or [],
+            "selected_type": item_type or "",
+            "max_price": max_price,
+            "search": search or "",
+        },
+    )
+
+
+@app.get("/shop/items/{item_id}")
+def item_detail_page(item_id: int, request: Request, db: Session = Depends(get_db)):
+    item = db.query(ItemORM).filter(ItemORM.id == item_id).first()
+    if item is None:
+        return templates.TemplateResponse(
+            request=request, name="404.html",
+            context={"message": "Товар не найден"}, status_code=404,
+        )
+    return templates.TemplateResponse(
+        request=request, name="item_detail.html", context={"item": item}
+    )
+
+
+# --- Web: авторизация ---
 
 @app.get("/shop/login")
 def login_page(request: Request):
     return templates.TemplateResponse(
         request=request, name="login.html", context={"error": None}
     )
+
 
 @app.post("/shop/login")
 def login_submit(
@@ -82,6 +138,7 @@ def login_submit(
         secure=COOKIE_SECURE, samesite="lax", max_age=ACCESS_TOKEN_EXPIRE_SECONDS,
     )
     return response
+
 
 @app.get("/shop/register")
 def register_page(request: Request):
@@ -128,6 +185,7 @@ def register_submit(
     )
     return response
 
+
 @app.get("/shop/account")
 def account_page(
     current_user: Optional[UserORM] = Depends(get_current_user_optional),
@@ -135,6 +193,67 @@ def account_page(
     if current_user is None:
         return RedirectResponse(url="/shop/login", status_code=303)
     return {"message": f"Привет, {current_user.email}! Личный кабинет — в разработке."}
+
+
+# --- Web: корзина ---
+
+@app.get("/shop/cart")
+def cart_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Optional[UserORM] = Depends(get_current_user_optional),
+):
+    if current_user is None:
+        return RedirectResponse(url="/shop/login", status_code=303)
+    cart = get_or_create_cart(db, current_user.id)
+    cart_data = build_cart_response(db, cart)
+    return templates.TemplateResponse(request=request, name="cart.html", context={"cart": cart_data})
+
+
+@app.post("/shop/cart/add")
+def cart_add_web(
+    item_id: int = Form(...),
+    quantity: int = Form(1),
+    db: Session = Depends(get_db),
+    current_user: Optional[UserORM] = Depends(get_current_user_optional),
+):
+    if current_user is None:
+        return RedirectResponse(url="/shop/login", status_code=303)
+    add_item_to_cart(db, current_user.id, item_id, quantity)
+    return RedirectResponse(url="/shop/cart", status_code=303)
+
+
+@app.post("/shop/cart/update/{item_id}")
+def cart_update_web(
+    item_id: int,
+    action: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: Optional[UserORM] = Depends(get_current_user_optional),
+):
+    if current_user is None:
+        return RedirectResponse(url="/shop/login", status_code=303)
+    cart = get_or_create_cart(db, current_user.id)
+    current_item = next((ci for ci in cart.items_rel if ci.item_id == item_id), None)
+    if current_item is not None:
+        new_qty = current_item.quantity + 1 if action == "increase" else max(1, current_item.quantity - 1)
+        try:
+            update_item_quantity(db, current_user.id, item_id, new_qty)
+        except HTTPException:
+            pass
+    return RedirectResponse(url="/shop/cart", status_code=303)
+
+
+@app.post("/shop/cart/remove/{item_id}")
+def cart_remove_web(
+    item_id: int,
+    db: Session = Depends(get_db),
+    current_user: Optional[UserORM] = Depends(get_current_user_optional),
+):
+    if current_user is None:
+        return RedirectResponse(url="/shop/login", status_code=303)
+    remove_item_from_cart(db, current_user.id, item_id)
+    return RedirectResponse(url="/shop/cart", status_code=303)
+
 
 @app.get("/")
 def root():

@@ -1,6 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import Optional
+from typing import List
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
@@ -13,6 +14,7 @@ class Item(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     name: str
+    description: Optional[str] = None
     price: float
     category: str
     item_type: ItemType
@@ -47,3 +49,18 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int
+
+class CartItemOut(BaseModel):
+    item_id: int
+    name: str
+    item_type: ItemType
+    price: float
+    quantity: int
+    subtotal: float
+
+
+class CartOut(BaseModel):
+    id: int
+    user_id: int
+    items: List[CartItemOut]
+    total: float
