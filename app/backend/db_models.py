@@ -87,3 +87,28 @@ class CartItemORM(Base):
     quantity = Column(Integer, nullable=False, default=1)
 
     item_rel = relationship("ItemORM")
+
+class OrderORM(Base):
+    __tablename__ = "orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    total = Column(Float, nullable=False)
+    fulfillment_method = Column(String, nullable=False)
+    address = Column(String, nullable=True)
+    status = Column(String, nullable=False, default="awaiting_payment")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    items_rel = relationship("OrderItemORM", cascade="all, delete-orphan")
+
+
+class OrderItemORM(Base):
+    __tablename__ = "order_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
+    item_id = Column(Integer, ForeignKey("items.id"), nullable=True)
+    name = Column(String, nullable=False)
+    item_type = Column(String, nullable=False)
+    price = Column(Float, nullable=False)
+    quantity = Column(Integer, nullable=False)

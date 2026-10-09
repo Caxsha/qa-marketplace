@@ -64,3 +64,31 @@ class CartOut(BaseModel):
     user_id: int
     items: List[CartItemOut]
     total: float
+
+class FulfillmentMethod(str, Enum):
+    DELIVERY = "delivery"
+    PICKUP = "pickup"
+
+class OrderStatus(str, Enum):
+    AWAITING_PAYMENT = "awaiting_payment"
+    PAID = "paid"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+class OrderItemOut(BaseModel):
+    item_id: Optional[int]
+    name: str
+    item_type: ItemType
+    price: float
+    quantity: int
+    subtotal: float
+
+class OrderOut(BaseModel):
+    id: int
+    user_id: int
+    items: List[OrderItemOut]
+    total: float
+    fulfillment_method: FulfillmentMethod
+    address: Optional[str]
+    status: OrderStatus
+    created_at: datetime

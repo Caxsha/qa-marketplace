@@ -19,6 +19,7 @@ from app.backend.auth import (
 )
 from app.backend.routers.auth import router as auth_router
 from app.backend.routers.cart import router as cart_router
+from app.backend.services.order_service import create_order_from_cart, get_user_order
 
 app = FastAPI(title="Магазин мамы", version="0.5.0")
 
@@ -253,6 +254,68 @@ def cart_remove_web(
         return RedirectResponse(url="/shop/login", status_code=303)
     remove_item_from_cart(db, current_user.id, item_id)
     return RedirectResponse(url="/shop/cart", status_code=303)
+
+@app.get("/shop/checkout")
+def checkout_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Optional[UserORM] = Depends(get_current_user_optional),
+):
+    if current_user is None:
+        return RedirectResponse(url="/shop/login", status_code=303)
+    cart = get_or_create_cart(db, current_user.id)
+    cart_data = build_cart_response(db, cart)
+    if not cart_data.items:
+        return RedirectResponse(url="/shop/cart", status_code=303)
+    return templates.TemplateResponse(
+        request=request, name="checkout.html",
+        context={"cart": cart_data, "error": None, "fulfillment_method": "delivery", "address": ""},
+    )
+
+
+@app.post("/shop/checkout")
+def checkout_submit(
+    request: Request,
+    fulfillment_method: str = Form(...),
+    address: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    current_user: Optional[UserORM] = Depends(get_current_user_optional),
+):
+    if current_user is None:
+        return RedirectResponse(url="/shop/login", status_code=303)
+    try:
+        order = create_order_from_cart(db, current_user.id, fulfillment_method, address)
+    except HTTPException as e:
+        cart = get_or_create_cart(db, current_user.id)
+        cart_data = build_cart_response(db, cart)
+        return templates.TemplateResponse(
+            request=request, name="checkout.html",
+            context={
+                "cart": cart_data, "error": e.detail,
+                "fulfillment_method": fulfillment_method, "address": address,
+            },
+            status_code=e.status_code,
+        )
+    return RedirectResponse(url=f"/shop/orders/{order.id}", status_code=303)
+
+
+@app.get("/shop/orders/{order_id}")
+def order_confirmation_page(
+    order_id: int, request: Request, db: Session = Depends(get_db),
+    current_user: Optional[UserORM] = Depends(get_current_user_optional),
+):
+    if current_user is None:
+        return RedirectResponse(url="/shop/login", status_code=303)
+    try:
+        order = get_user_order(db, current_user.id, order_id)
+    except HTTPException:
+        return templates.TemplateResponse(
+            request=request, name="404.html",
+            context={"message": "Заказ не найден"}, status_code=404,
+        )
+    return templates.TemplateResponse(
+        request=request, name="order_confirmation.html", context={"order": order}
+    )
 
 
 @app.get("/")
