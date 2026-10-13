@@ -39,7 +39,8 @@
         </div>
     </a>
 
-    <form method="post" action="/shop/cart/add">
+    <form method="post" action="/shop/cart/add"
+          hx-post="/shop/cart/add" hx-target="#toast" hx-swap="innerHTML">
     <input type="hidden" name="item_id" value="{{ item.id }}">
     <button type="submit" class="btn btn-card {% if item.item_type == 'service' %}btn-service{% endif %}"
             {% if item.stock_quantity == 0 %}disabled{% endif %}>

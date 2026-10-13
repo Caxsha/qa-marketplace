@@ -7,77 +7,12 @@
     <div class="container">
         <p class="auth-eyebrow">ВАШ ЗАКАЗ</p>
         <h1>Корзина</h1>
-        <p class="section-subtitle">{{ cart.items|length }} позиций</p>
     </div>
 </section>
 
 <section class="section cart-section">
-    <div class="container cart-layout">
-        <div class="cart-items">
-            {% for ci in cart.items %}
-            <div class="cart-item-card">
-                <img src="https://placehold.co/120x120/e8dfd8/4a3427?text={{ ci.name|urlencode }}" alt="{{ ci.name }}" class="cart-item-image">
-                <div class="cart-item-main">
-                    <div class="cart-item-top">
-                        {% if ci.item_type == 'service' %}
-                            <span class="badge badge-service">Услуга</span>
-                        {% else %}
-                            <span class="badge badge-product">Товар</span>
-                        {% endif %}
-                        <form method="post" action="/shop/cart/remove/{{ ci.item_id }}">
-                            <button type="submit" class="remove-link">Удалить</button>
-                        </form>
-                    </div>
-                    <h3>{{ ci.name }}</h3>
-                    <div class="cart-item-row">
-                        <div class="cart-item-col">
-                            <small>Цена за единицу</small>
-                            <strong>{% if ci.item_type == 'service' %}от {% endif %}{{ ci.price|int }} ₽</strong>
-                        </div>
-                        <div class="cart-item-col">
-                            <small>Количество</small>
-                            {% if ci.item_type == 'service' %}
-                                <strong>1 услуга</strong>
-                            {% else %}
-                                <div class="qty-stepper qty-stepper-sm">
-                                    <form method="post" action="/shop/cart/update/{{ ci.item_id }}">
-                                        <input type="hidden" name="action" value="decrease">
-                                        <button type="submit" class="qty-btn">−</button>
-                                    </form>
-                                    <span>{{ ci.quantity }}</span>
-                                    <form method="post" action="/shop/cart/update/{{ ci.item_id }}">
-                                        <input type="hidden" name="action" value="increase">
-                                        <button type="submit" class="qty-btn">+</button>
-                                    </form>
-                                </div>
-                            {% endif %}
-                        </div>
-                        <div class="cart-item-col cart-item-col-right">
-                            <small>Сумма</small>
-                            <strong>{{ ci.subtotal|int }} ₽</strong>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            {% else %}
-            <div class="cart-empty">
-                <p>Корзина пуста</p>
-                <a href="/shop/catalog" class="btn btn-primary">Перейти в каталог</a>
-            </div>
-            {% endfor %}
-        </div>
-
-        {% if cart.items %}
-        <aside class="cart-summary">
-            <h3>Итого</h3>
-            <div class="cart-summary-row">
-                <span>К оплате</span>
-                <strong>{{ cart.total|int }} ₽</strong>
-            </div>
-            <a href="/shop/checkout" class="btn btn-primary btn-checkout">Оформить заказ</a>
-            <p class="cart-summary-note">Оплата после подтверждения заказа</p>
-        </aside>
-        {% endif %}
+    <div class="container" id="cart-content">
+        {% include "_cart_content.html" %}
     </div>
 </section>
 {% endblock %}

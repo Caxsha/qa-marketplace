@@ -1,30 +1,57 @@
 from typing import List, Optional
-from fastapi import FastAPI, Query, Depends, Request, HTTPException, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.backend.models import Item, ItemType
-from app.backend.database import get_db
-from app.backend.db_models import ItemORM, ItemTypeORM, CategoryORM, UserORM, RoleORM
 from app.backend.services.items_service import query_items
 from app.backend.services.cart_service import (
     get_or_create_cart, build_cart_response, add_item_to_cart,
     update_item_quantity, remove_item_from_cart,
 )
-from app.backend.auth import (
-    verify_password, hash_password, create_access_token,
-    get_current_user_optional, ACCESS_TOKEN_EXPIRE_SECONDS, COOKIE_SECURE,
-)
 from app.backend.routers.auth import router as auth_router
 from app.backend.routers.cart import router as cart_router
-from app.backend.services.order_service import create_order_from_cart, get_user_order
+from fastapi import FastAPI, Query, Depends, Request, HTTPException, Form, Response
+from fastapi.responses import RedirectResponse, HTMLResponse
+from app.backend.db_models import ItemORM, ItemTypeORM, CategoryORM, UserORM, RoleORM, CartORM
+
+from app.backend.database import get_db, SessionLocal
+from app.backend.auth import (
+    verify_password, hash_password, create_access_token, decode_access_token,
+    get_current_user_optional, ACCESS_TOKEN_EXPIRE_SECONDS, COOKIE_SECURE,
+)
+from app.backend.services.order_service import create_order_from_cart, get_user_order, get_user_orders
+from app.backend.services.user_service import (
+    ProfileError, ensure_login, generate_unique_login, update_profile, change_password,
+)
 
 app = FastAPI(title="Магазин мамы", version="0.5.0")
 
 app.mount("/static", StaticFiles(directory="app/backend/static"), name="static")
-templates = Jinja2Templates(directory="app/backend/templates")
+STATUS_LABELS = {
+    "awaiting_payment": "Ожидает оплаты",
+    "paid": "Оплачен",
+    "completed": "Выполнен",
+    "cancelled": "Отменён",
+}
+
+
+def header_user_context(request: Request) -> dict:
+    """Выполняется при каждом рендере шаблона: шапка узнаёт, авторизован ли пользователь."""
+    token = request.cookies.get("access_token")
+    user_id = decode_access_token(token) if token else None
+    if user_id is None:
+        return {"current_user": None}
+    db = SessionLocal()
+    try:
+        user = db.query(UserORM).filter(UserORM.id == user_id).first()
+        return {"current_user": {"id": user.id, "login": user.login} if user else None}
+    finally:
+        db.close()
+
+
+templates = Jinja2Templates(directory="app/backend/templates", context_processors=[header_user_context])
+templates.env.filters["status_label"] = lambda s: STATUS_LABELS.get(getattr(s, "value", s), str(s))
 
 app.include_router(auth_router)
 app.include_router(cart_router)
@@ -63,7 +90,7 @@ def get_item(item_id: int, db: Session = Depends(get_db)):
 
 @app.get("/shop")
 def shop_page(request: Request, db: Session = Depends(get_db)):
-    items = db.query(ItemORM).all()
+    items = db.query(ItemORM).order_by(ItemORM.id).all()
     return templates.TemplateResponse(
         request=request, name="items.html", context={"items": items}
     )
@@ -173,7 +200,12 @@ def register_submit(
         )
 
     default_role = db.query(RoleORM).filter(RoleORM.role_name == "user").first()
-    user = UserORM(email=email, password_hash=hash_password(password), id_role=default_role.id)
+    user = UserORM(
+        email=email,
+        login=generate_unique_login(db, email),
+        password_hash=hash_password(password),
+        id_role=default_role.id,
+    )
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -187,16 +219,165 @@ def register_submit(
     return response
 
 
+# --- Web: личный кабинет ---
+
+NOTICES = {
+    "profile": "Профиль сохранён ✓",
+    "password": "Пароль изменён ✓",
+}
+
+
+def render_account(request: Request, db: Session, user: UserORM, *, error=None,
+                   error_section=None, notice=None, form=None, status_code: int = 200):
+    ensure_login(db, user)
+    orders = get_user_orders(db, user.id)
+    total_spent = sum(o.total for o in orders if o.status != "cancelled")
+    form = form or {"login": user.login, "email": user.email, "phone": user.phone or ""}
+    return templates.TemplateResponse(
+        request=request, name="account.html",
+        context={
+            "user": user, "orders": orders, "total_spent": total_spent, "form": form,
+            "error": error, "error_section": error_section, "notice": notice,
+        },
+        status_code=status_code,
+    )
+
+
 @app.get("/shop/account")
 def account_page(
+    request: Request,
+    notice: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
     current_user: Optional[UserORM] = Depends(get_current_user_optional),
 ):
     if current_user is None:
         return RedirectResponse(url="/shop/login", status_code=303)
-    return {"message": f"Привет, {current_user.email}! Личный кабинет — в разработке."}
+    return render_account(request, db, current_user, notice=NOTICES.get(notice))
+
+
+@app.post("/shop/account/profile")
+def account_profile_submit(
+    request: Request,
+    login: str = Form(""),
+    email: str = Form(""),
+    phone: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    current_user: Optional[UserORM] = Depends(get_current_user_optional),
+):
+    if current_user is None:
+        return RedirectResponse(url="/shop/login", status_code=303)
+    try:
+        update_profile(db, current_user, login, email, phone)
+    except ProfileError as e:
+        form = {"login": login, "email": email, "phone": phone or ""}
+        return render_account(request, db, current_user, error=e.message,
+                              error_section="profile", form=form, status_code=e.status_code)
+    return RedirectResponse(url="/shop/account?notice=profile", status_code=303)
+
+
+@app.post("/shop/account/password")
+def account_password_submit(
+    request: Request,
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: Optional[UserORM] = Depends(get_current_user_optional),
+):
+    if current_user is None:
+        return RedirectResponse(url="/shop/login", status_code=303)
+    try:
+        change_password(db, current_user, current_password, new_password)
+    except ProfileError as e:
+        return render_account(request, db, current_user, error=e.message,
+                              error_section="password", status_code=e.status_code)
+    return RedirectResponse(url="/shop/account?notice=password", status_code=303)
+
+
+@app.post("/shop/logout")
+def logout_web():
+    response = RedirectResponse(url="/shop", status_code=303)
+    response.delete_cookie("access_token")
+    return response
 
 
 # --- Web: корзина ---
+
+def is_htmx(request: Request) -> bool:
+    return request.headers.get("HX-Request") == "true"
+
+ERROR_TRANSLATIONS = {
+    "Cart is empty": "Корзина пуста",
+    "Address is required for delivery": "Укажите адрес доставки",
+    "Item not found": "Товар не найден",
+}
+
+def ru_error(detail: str) -> str:
+    if detail.startswith("Insufficient stock: only"):
+        left = detail.rsplit("only", 1)[1].replace("left", "").strip()
+        return f"Недостаточно товара на складе: осталось {left} шт."
+    if detail.startswith("Insufficient stock for item:"):
+        return "Недостаточно товара на складе: " + detail.split(":", 1)[1].strip()
+    return ERROR_TRANSLATIONS.get(detail, detail)
+
+
+def login_redirect(request: Request):
+    # Для HTMX обычный 303 не годится: он подставил бы страницу логина в кусок страницы
+    if is_htmx(request):
+        return Response(status_code=200, headers={"HX-Redirect": "/shop/login"})
+    return RedirectResponse(url="/shop/login", status_code=303)
+
+def cart_count_value(db: Session, user_id: int) -> int:
+    cart = db.query(CartORM).filter(CartORM.user_id == user_id).first()
+    return sum(ci.quantity for ci in cart.items_rel) if cart else 0
+
+
+def toast(request: Request, message: str, kind: str = "success", count: Optional[int] = None):
+    return templates.TemplateResponse(
+        request=request, name="_toast.html",
+        context={"message": message, "kind": kind, "count": count},
+    )
+
+
+def cart_partial(request: Request, db: Session, user_id: int):
+    cart_data = build_cart_response(db, get_or_create_cart(db, user_id))
+    count = sum(ci.quantity for ci in cart_data.items)
+    return templates.TemplateResponse(
+        request=request, name="_cart_partial.html",
+        context={"cart": cart_data, "count": count},
+    )
+
+
+@app.get("/shop/cart/count")
+def cart_count(
+    db: Session = Depends(get_db),
+    current_user: Optional[UserORM] = Depends(get_current_user_optional),
+):
+    if current_user is None:
+        return HTMLResponse("", headers={"Cache-Control": "no-store"})
+    count = cart_count_value(db, current_user.id)
+    return HTMLResponse(str(count) if count else "", headers={"Cache-Control": "no-store"})
+
+
+@app.post("/shop/cart/add")
+def cart_add_web(
+    request: Request,
+    item_id: int = Form(...),
+    quantity: int = Form(1),
+    db: Session = Depends(get_db),
+    current_user: Optional[UserORM] = Depends(get_current_user_optional),
+):
+    if current_user is None:
+        return login_redirect(request)
+    try:
+        add_item_to_cart(db, current_user.id, item_id, quantity)
+    except HTTPException as e:
+        if is_htmx(request):
+            return toast(request, ru_error(e.detail), "error")
+        raise
+    if is_htmx(request):
+        return toast(request, "Добавлено в корзину ✓", count=cart_count_value(db, current_user.id))
+    return RedirectResponse(url="/shop/cart", status_code=303)
+
 
 @app.get("/shop/cart")
 def cart_page(
@@ -211,28 +392,16 @@ def cart_page(
     return templates.TemplateResponse(request=request, name="cart.html", context={"cart": cart_data})
 
 
-@app.post("/shop/cart/add")
-def cart_add_web(
-    item_id: int = Form(...),
-    quantity: int = Form(1),
-    db: Session = Depends(get_db),
-    current_user: Optional[UserORM] = Depends(get_current_user_optional),
-):
-    if current_user is None:
-        return RedirectResponse(url="/shop/login", status_code=303)
-    add_item_to_cart(db, current_user.id, item_id, quantity)
-    return RedirectResponse(url="/shop/cart", status_code=303)
-
-
 @app.post("/shop/cart/update/{item_id}")
 def cart_update_web(
     item_id: int,
+    request: Request,
     action: str = Form(...),
     db: Session = Depends(get_db),
     current_user: Optional[UserORM] = Depends(get_current_user_optional),
 ):
     if current_user is None:
-        return RedirectResponse(url="/shop/login", status_code=303)
+        return login_redirect(request)
     cart = get_or_create_cart(db, current_user.id)
     current_item = next((ci for ci in cart.items_rel if ci.item_id == item_id), None)
     if current_item is not None:
@@ -241,19 +410,28 @@ def cart_update_web(
             update_item_quantity(db, current_user.id, item_id, new_qty)
         except HTTPException:
             pass
+    if is_htmx(request):
+        return cart_partial(request, db, current_user.id)
     return RedirectResponse(url="/shop/cart", status_code=303)
 
 
 @app.post("/shop/cart/remove/{item_id}")
 def cart_remove_web(
     item_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[UserORM] = Depends(get_current_user_optional),
 ):
     if current_user is None:
-        return RedirectResponse(url="/shop/login", status_code=303)
-    remove_item_from_cart(db, current_user.id, item_id)
+        return login_redirect(request)
+    try:
+        remove_item_from_cart(db, current_user.id, item_id)
+    except HTTPException:
+        pass
+    if is_htmx(request):
+        return cart_partial(request, db, current_user.id)
     return RedirectResponse(url="/shop/cart", status_code=303)
+
 
 @app.get("/shop/checkout")
 def checkout_page(
@@ -291,7 +469,7 @@ def checkout_submit(
         return templates.TemplateResponse(
             request=request, name="checkout.html",
             context={
-                "cart": cart_data, "error": e.detail,
+                "cart": cart_data, "error": ru_error(e.detail),
                 "fulfillment_method": fulfillment_method, "address": address,
             },
             status_code=e.status_code,

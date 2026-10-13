@@ -35,7 +35,9 @@ class UserCreate(BaseModel):
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    login: Optional[str] = None
     email: str
+    phone: Optional[str] = None
     role: UserRole
     created_at: datetime
 

@@ -12,66 +12,70 @@
 
 <section class="section">
     <div class="container">
-        <form method="get" action="/shop/catalog" id="catalog-filters">
-            <div class="search-bar">
-                <span class="search-icon">🔍</span>
-                <input type="text" name="search" value="{{ search }}" placeholder="Поиск по названию..." class="search-input">
-            </div>
+        <form id="catalog-filters" method="get" action="/shop/catalog"></form>
 
-            <div class="catalog-layout">
-                <aside class="catalog-filters">
-                    <h4>Тип позиции</h4>
-                    <div class="type-toggle">
-                        <label class="type-option {% if not selected_type %}active{% endif %}">
-                            <input type="radio" name="item_type" value="" {% if not selected_type %}checked{% endif %} onchange="this.form.submit()">
-                            Все
-                        </label>
-                        <label class="type-option {% if selected_type == 'product' %}active{% endif %}">
-                            <input type="radio" name="item_type" value="product" {% if selected_type == 'product' %}checked{% endif %} onchange="this.form.submit()">
-                            Товары
-                        </label>
-                        <label class="type-option {% if selected_type == 'service' %}active{% endif %}">
-                            <input type="radio" name="item_type" value="service" {% if selected_type == 'service' %}checked{% endif %} onchange="this.form.submit()">
-                            Услуги
-                        </label>
-                    </div>
+        <div class="search-bar">
+            <span class="search-icon">🔍</span>
+            <input type="text" name="search" form="catalog-filters" value="{{ search }}"
+                   placeholder="Поиск по названию..." class="search-input">
+        </div>
 
-                    <h4>Категория</h4>
-                    <div class="category-checkboxes">
-                        {% for cat in all_categories %}
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="category" value="{{ cat.name }}"
-                                   {% if cat.name in selected_categories %}checked{% endif %}
-                                   onchange="this.form.submit()">
-                            {{ cat.name }}
-                        </label>
-                        {% endfor %}
-                    </div>
-
-                    <h4>Цена до <span id="price-label">{{ max_price|int }} ₽</span></h4>
-                    <input type="range" name="max_price" min="100" max="5000" step="50"
-                           value="{{ max_price }}" class="price-slider"
-                           oninput="document.getElementById('price-label').textContent = this.value + ' ₽'"
-                           onchange="this.form.submit()">
-                    <div class="price-range-labels">
-                        <span>100 ₽</span>
-                        <span>5 000 ₽</span>
-                    </div>
-                </aside>
-
-                <div class="catalog-results">
-                    <p class="results-count">Найдено: {{ items|length }} позиций</p>
-                    <div class="items-grid-popular">
-                        {% for item in items %}
-                            {% include "_item_card.html" %}
-                        {% endfor %}
-                    </div>
-                    {% if items|length == 0 %}
-                        <p class="empty-state">По вашему запросу ничего не найдено. Попробуйте изменить фильтры.</p>
-                    {% endif %}
+        <div class="catalog-layout">
+            <aside class="catalog-filters">
+                <h4>Тип позиции</h4>
+                <div class="type-toggle">
+                    <label class="type-option {% if not selected_type %}active{% endif %}">
+                        <input type="radio" name="item_type" value="" form="catalog-filters"
+                               {% if not selected_type %}checked{% endif %} onchange="this.form.submit()">
+                        Все
+                    </label>
+                    <label class="type-option {% if selected_type == 'product' %}active{% endif %}">
+                        <input type="radio" name="item_type" value="product" form="catalog-filters"
+                               {% if selected_type == 'product' %}checked{% endif %} onchange="this.form.submit()">
+                        Товары
+                    </label>
+                    <label class="type-option {% if selected_type == 'service' %}active{% endif %}">
+                        <input type="radio" name="item_type" value="service" form="catalog-filters"
+                               {% if selected_type == 'service' %}checked{% endif %} onchange="this.form.submit()">
+                        Услуги
+                    </label>
                 </div>
+
+                <h4>Категория</h4>
+                <div class="category-checkboxes">
+                    {% for cat in all_categories %}
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="category" value="{{ cat.name }}" form="catalog-filters"
+                               {% if cat.name in selected_categories %}checked{% endif %}
+                               onchange="this.form.submit()">
+                        {{ cat.name }}
+                    </label>
+                    {% endfor %}
+                </div>
+
+                <h4>Цена до <span id="price-label">{{ max_price|int }} ₽</span></h4>
+                <input type="range" name="max_price" form="catalog-filters" min="100" max="5000" step="50"
+                       value="{{ max_price }}" class="price-slider"
+                       oninput="document.getElementById('price-label').textContent = this.value + ' ₽'"
+                       onchange="this.form.submit()">
+                <div class="price-range-labels">
+                    <span>100 ₽</span>
+                    <span>5 000 ₽</span>
+                </div>
+            </aside>
+
+            <div class="catalog-results">
+                <p class="results-count">Найдено: {{ items|length }} позиций</p>
+                <div class="items-grid-popular">
+                    {% for item in items %}
+                        {% include "_item_card.html" %}
+                    {% endfor %}
+                </div>
+                {% if items|length == 0 %}
+                    <p class="empty-state">По вашему запросу ничего не найдено. Попробуйте изменить фильтры.</p>
+                {% endif %}
             </div>
-        </form>
+        </div>
     </div>
 </section>
 {% endblock %}

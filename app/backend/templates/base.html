@@ -4,27 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Магазин мамы{% endblock %}</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=2">
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
 </head>
 <body>
 
     <!-- Шапка сайта -->
     <header class="navbar">
-        <div class="container nav-container">
-            <a href="/shop" class="logo">
-                <span class="logo-icon">🧺</span>
-                <div class="logo-text">
-                    <strong>Магазин мамы</strong>
-                    <small>домашние продукты и услуги</small>
-                </div>
+    <div class="container nav-container">
+        <a href="/shop" class="logo">
+            <span class="logo-icon">🧺</span>
+            <div class="logo-text">
+                <strong>Магазин мамы</strong>
+                <small>домашние продукты и услуги</small>
+            </div>
+        </a>
+
+        <input type="checkbox" id="nav-toggle" class="nav-toggle">
+        <label for="nav-toggle" class="nav-burger" aria-label="Открыть меню">☰</label>
+
+        <nav class="nav-links">
+            <a href="/shop/catalog">📦 Каталог</a>
+            <a href="/shop/cart">🛒 Корзина
+                <span id="cart-badge" class="cart-badge"
+                      hx-get="/shop/cart/count"
+                      hx-trigger="load"
+                      hx-swap="innerHTML"></span>
             </a>
-            <nav class="nav-links">
-                <a href="/shop/catalog">📦 Каталог</a>
-                <a href="/shop/cart">🛒 Корзина</a>
+            {% if current_user %}
                 <a href="/shop/account">👤 Личный кабинет</a>
-                <a href="/shop" class="btn btn-primary btn-sm">Заказать</a>
-            </nav>
-        </div>
+            {% else %}
+                <a href="/shop/login">👤 Войти</a>
+            {% endif %}
+            <a href="/shop/catalog" class="btn btn-primary btn-sm">Заказать</a>
+        </nav>
+    </div>
     </header>
 
     <!-- Основной контент страниц -->
@@ -47,7 +61,10 @@
                 <ul>
                     <li><a href="/shop/catalog">Каталог товаров</a></li>
                     <li><a href="/shop/cart">Корзина</a></li>
-                    <li><a href="#">Личный кабинет</a></li>
+                    <li>
+                        {% if current_user %}<a href="/shop/account">Личный кабинет</a>
+                        {% else %}<a href="/shop/login">Войти</a>{% endif %}
+                    </li>
                 </ul>
             </div>
             <div class="footer-col">
@@ -65,6 +82,6 @@
             <p>Сделано с ❤️ для семейных покупок</p>
         </div>
     </footer>
-
+    <div id="toast" class="toast-container"></div>
 </body>
 </html>

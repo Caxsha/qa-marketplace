@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Личный кабинет — Магазин мамы{% endblock %}
+
+{% block content %}
+<section class="cart-header">
+    <div class="container">
+        <p class="auth-eyebrow">ВАШ ПРОФИЛЬ</p>
+        <h1>Личный кабинет</h1>
+        <p class="section-subtitle">Здравствуйте, {{ user.login }}!</p>
+    </div>
+</section>
+
+<section class="section account-section">
+    <div class="container">
+        {% if notice %}<div class="form-success">{{ notice }}</div>{% endif %}
+
+        <div class="account-stats">
+            <div class="stat-tile">
+                <small>Заказов</small>
+                <strong>{{ orders|length }}</strong>
+            </div>
+            <div class="stat-tile">
+                <small>Сумма заказов</small>
+                <strong>{{ total_spent|int }} ₽</strong>
+            </div>
+            <div class="stat-tile">
+                <small>С нами с</small>
+                <strong>{% if user.created_at %}{{ user.created_at.strftime('%d.%m.%Y') }}{% else %}—{% endif %}</strong>
+            </div>
+        </div>
+
+        <div class="account-layout">
+            <div class="account-main">
+                <h2>История заказов</h2>
+                {% for order in orders %}
+                <a class="order-row" href="/shop/orders/{{ order.id }}">
+                    <div class="order-row-main">
+                        <strong>Заказ №{{ order.id }}</strong>
+                        <small>{{ order.created_at.strftime('%d.%m.%Y') }} ·
+                            {% if order.fulfillment_method == 'delivery' %}Доставка{% else %}Самовывоз{% endif %}</small>
+                        <small class="order-row-items">{{ order.items|map(attribute='name')|join(', ') }}</small>
+                    </div>
+                    <div class="order-row-side">
+                        <span class="status-badge status-{{ order.status.value }}">{{ order.status|status_label }}</span>
+                        <strong>{{ order.total|int }} ₽</strong>
+                    </div>
+                </a>
+                {% else %}
+                <div class="cart-empty">
+                    <p>Заказов пока нет</p>
+                    <a href="/shop/catalog" class="btn btn-primary">Перейти в каталог</a>
+                </div>
+                {% endfor %}
+            </div>
+
+            <aside class="account-side">
+                <div class="account-card">
+                    <h3>Профиль</h3>
+                    {% if error and error_section == 'profile' %}<div class="form-error">{{ error }}</div>{% endif %}
+                    <form method="post" action="/shop/account/profile">
+                        <div class="form-group">
+                            <label for="login">Логин</label>
+                            <input type="text" id="login" name="login" class="form-control"
+                                   value="{{ form.login }}" required pattern="[a-z0-9._\-]{3,30}"
+                                   title="3–30 символов: латиница, цифры, . _ -">
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" name="email" class="form-control"
+                                   value="{{ form.email }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="phone">Телефон</label>
+                            <input type="tel" id="phone" name="phone" class="form-control"
+                                   value="{{ form.phone }}" placeholder="+7 900 000-00-00">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-auth">Сохранить</button>
+                    </form>
+                </div>
+
+                <div class="account-card">
+                    <h3>Смена пароля</h3>
+                    {% if error and error_section == 'password' %}<div class="form-error">{{ error }}</div>{% endif %}
+                    <form method="post" action="/shop/account/password">
+                        <div class="form-group">
+                            <label for="current_password">Текущий пароль</label>
+                            <input type="password" id="current_password" name="current_password" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="new_password">Новый пароль</label>
+                            <input type="password" id="new_password" name="new_password" class="form-control"
+                                   placeholder="Не менее 8 символов" minlength="8" required>
+                        </div>
+                        <button type="submit" class="btn btn-outline btn-auth">Изменить пароль</button>
+                    </form>
+                </div>
+
+                <form method="post" action="/shop/logout">
+                    <button type="submit" class="logout-link">Выйти из аккаунта</button>
+                </form>
+            </aside>
+        </div>
+    </div>
+</section>
+{% endblock %}

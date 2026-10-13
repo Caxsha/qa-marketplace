@@ -75,7 +75,7 @@ class CartORM(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
 
-    items_rel = relationship("CartItemORM", cascade="all, delete-orphan")
+    items_rel = relationship("CartItemORM", cascade="all, delete-orphan", order_by="CartItemORM.id")
 
 
 class CartItemORM(Base):
@@ -99,7 +99,7 @@ class OrderORM(Base):
     status = Column(String, nullable=False, default="awaiting_payment")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    items_rel = relationship("OrderItemORM", cascade="all, delete-orphan")
+    items_rel = relationship("OrderItemORM", cascade="all, delete-orphan", order_by="OrderItemORM.id")
 
 
 class OrderItemORM(Base):

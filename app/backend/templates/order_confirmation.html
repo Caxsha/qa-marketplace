@@ -1,12 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %}Заказ оформлен — Магазин мамы{% endblock %}
+{% block title %}Заказ №{{ order.id }} — Магазин мамы{% endblock %}
 
 {% block content %}
 <section class="section">
     <div class="container order-confirmation">
-        <h1>✅ Заказ №{{ order.id }} оформлен</h1>
-        <p class="section-subtitle">Статус: Ожидает оплаты</p>
+        <h1>Заказ №{{ order.id }}</h1>
+        <p class="section-subtitle">
+            <span class="status-badge status-{{ order.status.value }}">{{ order.status|status_label }}</span>
+            · от {{ order.created_at.strftime('%d.%m.%Y') }}
+        </p>
 
         <div class="order-summary-card">
             {% for oi in order.items %}
@@ -25,19 +28,19 @@
         </div>
 
         <p>
-            {% if order.fulfillment_method == 'delivery' %}
-                Доставка по адресу: {{ order.address }}
-            {% else %}
-                Самовывоз
-            {% endif %}
+            {% if order.fulfillment_method == 'delivery' %}Доставка по адресу: {{ order.address }}
+            {% else %}Самовывоз{% endif %}
         </p>
 
+        {% if order.status.value == 'awaiting_payment' %}
         <div class="payment-note">
             <strong>Оплата переводом:</strong> +7 (900) 123-45-67 (СБП)<br>
             После оплаты заказ будет подтверждён вручную.
         </div>
+        {% endif %}
 
-        <a href="/shop/catalog" class="btn btn-primary">Вернуться в каталог</a>
+        <a href="/shop/account" class="btn btn-primary">В личный кабинет</a>
+        <a href="/shop/catalog" class="btn btn-outline">В каталог</a>
     </div>
 </section>
 {% endblock %}

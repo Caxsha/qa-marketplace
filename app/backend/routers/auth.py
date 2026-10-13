@@ -8,6 +8,7 @@ from app.backend.auth import (
     hash_password, verify_password, create_access_token,
     get_current_user, ACCESS_TOKEN_EXPIRE_SECONDS, COOKIE_SECURE,
 )
+from app.backend.services.user_service import generate_unique_login
 
 router = APIRouter(prefix="/api")
 
@@ -17,7 +18,12 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
     existing = db.query(UserORM).filter(UserORM.email == payload.email).first()
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
-    user = UserORM(email=payload.email, password_hash=hash_password(payload.password))
+    user = UserORM(
+        email=payload.email,
+        login=generate_unique_login(db, payload.email),
+        password_hash=hash_password(payload.password),
+        id_role=default_role.id,
+    )
     db.add(user)
     db.commit()
     db.refresh(user)

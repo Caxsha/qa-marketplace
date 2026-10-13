@@ -32,4 +32,4 @@ def query_items(
     if search:
         query = query.filter(ItemORM.name.ilike(f"%{search}%"))
 
-    return query.all()
+    return query.order_by(ItemORM.id).all()
