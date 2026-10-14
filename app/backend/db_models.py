@@ -1,7 +1,6 @@
-import enum
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
+from sqlalchemy.sql import func, expression
 
 from app.backend.database import Base
 
@@ -56,6 +55,7 @@ class ItemORM(Base):
     id_item_type = Column(Integer, ForeignKey("item_types.id"), nullable=False)
     stock_quantity = Column(Integer, nullable=True)
     duration_days = Column(Integer, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True, server_default=expression.true())
 
     category_rel = relationship("CategoryORM")
     item_type_rel = relationship("ItemTypeORM")
@@ -88,6 +88,7 @@ class CartItemORM(Base):
 
     item_rel = relationship("ItemORM")
 
+
 class OrderORM(Base):
     __tablename__ = "orders"
 
@@ -99,7 +100,10 @@ class OrderORM(Base):
     status = Column(String, nullable=False, default="awaiting_payment")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    user_rel = relationship("UserORM")
     items_rel = relationship("OrderItemORM", cascade="all, delete-orphan", order_by="OrderItemORM.id")
+    status_log_rel = relationship("OrderStatusLogORM", cascade="all, delete-orphan",
+                                  order_by="OrderStatusLogORM.id")
 
 
 class OrderItemORM(Base):
@@ -112,3 +116,17 @@ class OrderItemORM(Base):
     item_type = Column(String, nullable=False)
     price = Column(Float, nullable=False)
     quantity = Column(Integer, nullable=False)
+
+
+class OrderStatusLogORM(Base):
+    """Журнал: кто, когда и из какого статуса в какой перевёл заказ."""
+    __tablename__ = "order_status_log"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=False)
+    changed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    from_status = Column(String, nullable=False)
+    to_status = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    changed_by_rel = relationship("UserORM")

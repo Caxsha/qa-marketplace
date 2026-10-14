@@ -12,13 +12,12 @@ def query_items(
     max_price: Optional[float] = None,
     search: Optional[str] = None,
 ):
-    """Единая точка фильтрации каталога. Используется и /api/items (JSON),
-    и /shop/catalog (HTML) — см. 03-architecture.md: одна бизнес-логика,
-    два представления."""
+    """Единая точка фильтрации каталога: используется и /api/items, и /shop/catalog."""
     query = (
         db.query(ItemORM)
         .join(ItemTypeORM, ItemORM.id_item_type == ItemTypeORM.id)
         .join(CategoryORM, ItemORM.id_category == CategoryORM.id)
+        .filter(ItemORM.is_active.is_(True))
     )
 
     if item_type:

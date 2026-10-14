@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>{% block title %}Магазин мамы{% endblock %}</title>
+
     <link rel="stylesheet" href="/static/css/style.css?v=2">
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
 </head>
@@ -11,34 +13,61 @@
 
     <!-- Шапка сайта -->
     <header class="navbar">
-    <div class="container nav-container">
-        <a href="/shop" class="logo">
-            <span class="logo-icon">🧺</span>
-            <div class="logo-text">
-                <strong>Магазин мамы</strong>
-                <small>домашние продукты и услуги</small>
-            </div>
-        </a>
+        <div class="container nav-container">
 
-        <input type="checkbox" id="nav-toggle" class="nav-toggle">
-        <label for="nav-toggle" class="nav-burger" aria-label="Открыть меню">☰</label>
+            <a href="/shop" class="logo">
+                <span class="logo-icon">🧺</span>
 
-        <nav class="nav-links">
-            <a href="/shop/catalog">📦 Каталог</a>
-            <a href="/shop/cart">🛒 Корзина
-                <span id="cart-badge" class="cart-badge"
-                      hx-get="/shop/cart/count"
-                      hx-trigger="load"
-                      hx-swap="innerHTML"></span>
+                <div class="logo-text">
+                    <strong>Магазин мамы</strong>
+                    <small>домашние продукты и услуги</small>
+                </div>
             </a>
-            {% if current_user %}
-                <a href="/shop/account">👤 Личный кабинет</a>
-            {% else %}
-                <a href="/shop/login">👤 Войти</a>
-            {% endif %}
-            <a href="/shop/catalog" class="btn btn-primary btn-sm">Заказать</a>
-        </nav>
-    </div>
+
+            <input
+                type="checkbox"
+                id="nav-toggle"
+                class="nav-toggle"
+            >
+
+            <label
+                for="nav-toggle"
+                class="nav-burger"
+                aria-label="Открыть меню"
+            >
+                ☰
+            </label>
+
+            <nav class="nav-links">
+                <a href="/shop/catalog">📦 Каталог</a>
+
+                <a href="/shop/cart">
+                    🛒 Корзина
+                    <span
+                        id="cart-badge"
+                        class="cart-badge"
+                        hx-get="/shop/cart/count"
+                        hx-trigger="load"
+                        hx-swap="innerHTML"
+                    ></span>
+                </a>
+
+                {% if current_user and current_user.is_admin %}
+                    <a href="/shop/admin">🛠 Админ-панель</a>
+                {% endif %}
+
+                {% if current_user %}
+                    <a href="/shop/account">👤 Личный кабинет</a>
+                {% else %}
+                    <a href="/shop/login">👤 Войти</a>
+                {% endif %}
+
+                <a href="/shop/catalog" class="btn btn-primary btn-sm">
+                    Заказать
+                </a>
+            </nav>
+
+        </div>
     </header>
 
     <!-- Основной контент страниц -->
@@ -49,26 +78,50 @@
     <!-- Подвал сайта -->
     <footer class="footer">
         <div class="container footer-grid">
+
             <div class="footer-col">
                 <a href="/shop" class="logo logo-light">
                     <span class="logo-icon">🧺</span>
                     <strong>Магазин мамы</strong>
                 </a>
-                <p class="footer-desc">Домашние продукты и услуги с любовью — от Надежды для вас и ваших близких.</p>
+
+                <p class="footer-desc">
+                    Домашние продукты и услуги с любовью —
+                    от Надежды для вас и ваших близких.
+                </p>
             </div>
+
             <div class="footer-col">
                 <h5>НАВИГАЦИЯ</h5>
+
                 <ul>
-                    <li><a href="/shop/catalog">Каталог товаров</a></li>
-                    <li><a href="/shop/cart">Корзина</a></li>
                     <li>
-                        {% if current_user %}<a href="/shop/account">Личный кабинет</a>
-                        {% else %}<a href="/shop/login">Войти</a>{% endif %}
+                        <a href="/shop/catalog">Каталог товаров</a>
+                    </li>
+
+                    <li>
+                        <a href="/shop/cart">Корзина</a>
+                    </li>
+
+                    {% if current_user and current_user.is_admin %}
+                        <li>
+                            <a href="/shop/admin">🛠 Админ-панель</a>
+                        </li>
+                    {% endif %}
+
+                    <li>
+                        {% if current_user %}
+                            <a href="/shop/account">Личный кабинет</a>
+                        {% else %}
+                            <a href="/shop/login">Войти</a>
+                        {% endif %}
                     </li>
                 </ul>
             </div>
+
             <div class="footer-col">
                 <h5>КОНТАКТЫ</h5>
+
                 <ul class="contact-list">
                     <li>📱 +7 (900) 123-45-67</li>
                     <li>💬 WhatsApp / Telegram</li>
@@ -76,12 +129,17 @@
                     <li>🕒 Пн–Сб, 9:00–19:00</li>
                 </ul>
             </div>
+
         </div>
+
         <div class="container footer-bottom">
             <p>&copy; 2026 Магазин мамы. Все права защищены.</p>
             <p>Сделано с ❤️ для семейных покупок</p>
         </div>
     </footer>
+
+    <!-- Контейнер для уведомлений -->
     <div id="toast" class="toast-container"></div>
+
 </body>
 </html>

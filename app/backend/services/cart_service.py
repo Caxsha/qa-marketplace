@@ -35,7 +35,7 @@ def build_cart_response(db: Session, cart: CartORM) -> CartOut:
 
 
 def add_item_to_cart(db: Session, user_id: int, item_id: int, quantity: int = 1) -> CartOut:
-    item = db.query(ItemORM).filter(ItemORM.id == item_id).first()
+    item = db.query(ItemORM).filter(ItemORM.id == item_id, ItemORM.is_active.is_(True)).first()
     if item is None:
         raise HTTPException(status_code=404, detail="Item not found")
 

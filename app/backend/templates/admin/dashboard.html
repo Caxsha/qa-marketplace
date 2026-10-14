@@ -1,0 +1,53 @@
+{% extends "admin/_layout.html" %}
+
+{% block admin_content %}
+<div class="admin-stats">
+    <a class="stat-tile stat-attention" href="/shop/admin/orders?status=awaiting_payment">
+        <small>Ожидают оплаты</small><strong>{{ stats.counts['awaiting_payment'] }}</strong>
+    </a>
+    <a class="stat-tile" href="/shop/admin/orders?status=paid">
+        <small>Оплачены, к выполнению</small><strong>{{ stats.counts['paid'] }}</strong>
+    </a>
+    <a class="stat-tile" href="/shop/admin/orders?status=completed">
+        <small>Выполнены</small><strong>{{ stats.counts['completed'] }}</strong>
+    </a>
+    <a class="stat-tile" href="/shop/admin/orders?status=cancelled">
+        <small>Отменены</small><strong>{{ stats.counts['cancelled'] }}</strong>
+    </a>
+</div>
+
+<div class="admin-stats">
+    <div class="stat-tile"><small>Выручка сегодня</small><strong>{{ stats.revenue_today|int }} ₽</strong></div>
+    <div class="stat-tile"><small>Выручка за месяц</small><strong>{{ stats.revenue_month|int }} ₽</strong></div>
+    <div class="stat-tile"><small>Выручка всего</small><strong>{{ stats.revenue_total|int }} ₽</strong></div>
+    <div class="stat-tile"><small>Пользователей</small><strong>{{ stats.users_count }}</strong></div>
+</div>
+<p class="field-hint">Выручка: оплаченные и выполненные заказы, по дате создания заказа.</p>
+
+<div class="admin-two-col">
+    <div class="account-card">
+        <h3>Заканчивается на складе (≤ {{ threshold }})</h3>
+        {% for item in stats.low_stock %}
+        <div class="kv">
+            <span><a href="/shop/admin/items/{{ item.id }}/edit">{{ item.name }}</a></span>
+            <strong>{{ item.stock_quantity }} шт.</strong>
+        </div>
+        {% else %}
+        <p class="field-hint">Всё в порядке: товаров на исходе нет.</p>
+        {% endfor %}
+    </div>
+
+    <div class="account-card">
+        <h3>Последние заказы</h3>
+        {% for order in stats.recent_orders %}
+        <div class="kv">
+            <span><a href="/shop/admin/orders/{{ order.id }}">№{{ order.id }}</a>
+                · {{ order.user_rel.login or order.user_rel.email }}</span>
+            <span class="status-badge status-{{ order.status }}">{{ order.status|status_label }}</span>
+        </div>
+        {% else %}
+        <p class="field-hint">Заказов пока нет.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

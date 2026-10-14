@@ -1,0 +1,74 @@
+{% extends "admin/_layout.html" %}
+
+{% block admin_content %}
+<p><a href="/shop/admin/items" class="back-link">← Каталог</a></p>
+
+<div class="account-card admin-form">
+    <h3>{% if item %}Редактирование: {{ item.name }}{% else %}Новая позиция{% endif %}</h3>
+
+    <form method="post" action="{% if item %}/shop/admin/items/{{ item.id }}/edit{% else %}/shop/admin/items/new{% endif %}">
+        <div class="form-group">
+            <label for="name">Название</label>
+            <input type="text" id="name" name="name" class="form-control" value="{{ form.name }}" maxlength="120" required>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Описание</label>
+            <textarea id="description" name="description" class="form-control" maxlength="2000">{{ form.description }}</textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="price">Цена, ₽</label>
+            <input type="number" id="price" name="price" class="form-control" value="{{ form.price }}" min="0.01" step="0.01" required>
+        </div>
+
+        <div class="form-group">
+            <label for="category">Категория</label>
+            <select id="category" name="category" class="form-control">
+                {% for c in categories %}
+                <option value="{{ c.name }}" {% if c.name == form.category %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+            <input type="text" name="new_category" class="form-control mt-8" maxlength="50"
+                   placeholder="…или введите новую категорию" value="{{ form.new_category }}">
+            <p class="field-hint">Если заполнена новая категория, она используется вместо выбранной.</p>
+        </div>
+
+        <div class="form-group">
+            <label>Тип позиции</label>
+            {% if item %}
+                {% if item.item_type == 'service' %}<span class="badge badge-service">Услуга</span>{% else %}<span class="badge badge-product">Товар</span>{% endif %}
+                <p class="field-hint">Тип нельзя менять: позиция может уже лежать в корзинах и заказах.</p>
+            {% else %}
+                <label class="checkbox-label"><input type="radio" name="item_type" value="product" {% if form.item_type != 'service' %}checked{% endif %}> Товар (со складом)</label>
+                <label class="checkbox-label"><input type="radio" name="item_type" value="service" {% if form.item_type == 'service' %}checked{% endif %}> Услуга (со сроком выполнения)</label>
+            {% endif %}
+        </div>
+
+        <div class="form-group" id="stock-group">
+            <label for="stock_quantity">Остаток на складе, шт.</label>
+            <input type="number" id="stock_quantity" name="stock_quantity" class="form-control" value="{{ form.stock_quantity }}" min="0">
+        </div>
+
+        <div class="form-group" id="duration-group">
+            <label for="duration_days">Срок выполнения, дней</label>
+            <input type="number" id="duration_days" name="duration_days" class="form-control" value="{{ form.duration_days }}" min="1">
+        </div>
+
+        <button type="submit" class="btn btn-primary">Сохранить</button>
+    </form>
+</div>
+
+<script>
+    function syncType() {
+        const checked = document.querySelector('input[name="item_type"]:checked');
+        const type = checked ? checked.value : '{{ form.item_type }}';
+        document.getElementById('stock-group').style.display = type === 'product' ? 'block' : 'none';
+        document.getElementById('duration-group').style.display = type === 'service' ? 'block' : 'none';
+    }
+    document.querySelectorAll('input[name="item_type"]').forEach(function (r) {
+        r.addEventListener('change', syncType);
+    });
+    syncType();
+</script>
+{% endblock %}

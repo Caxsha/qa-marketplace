@@ -1,0 +1,78 @@
+{% extends "admin/_layout.html" %}
+
+{% block admin_content %}
+<p><a href="/shop/admin/orders" class="back-link">← Все заказы</a></p>
+
+<div class="admin-order-head">
+    <h2>Заказ №{{ order.id }}</h2>
+    <span class="status-badge status-{{ order.status }}">{{ order.status|status_label }}</span>
+    <small>создан {{ order.created_at.strftime('%d.%m.%Y %H:%M') }}</small>
+</div>
+
+<div class="admin-detail-grid">
+    <div class="account-card">
+        <h3>Покупатель</h3>
+        <div class="kv"><span>Логин</span><span>{{ order.user_rel.login or '—' }}</span></div>
+        <div class="kv"><span>Email</span><span>{{ order.user_rel.email }}</span></div>
+        <div class="kv"><span>Телефон</span><span>{{ order.user_rel.phone or '—' }}</span></div>
+    </div>
+    <div class="account-card">
+        <h3>Получение</h3>
+        <div class="kv"><span>Способ</span>
+            <span>{% if order.fulfillment_method == 'delivery' %}Доставка{% else %}Самовывоз{% endif %}</span></div>
+        <div class="kv"><span>Адрес</span><span>{{ order.address or '—' }}</span></div>
+    </div>
+</div>
+
+<div class="table-scroll">
+    <table class="admin-table">
+        <thead><tr><th>Позиция</th><th>Цена</th><th>Кол-во</th><th>Сумма</th></tr></thead>
+        <tbody>
+        {% for oi in order.items_rel %}
+            <tr>
+                <td>{{ oi.name }}</td>
+                <td>{{ oi.price|int }} ₽</td>
+                <td>{{ oi.quantity }}</td>
+                <td>{{ (oi.price * oi.quantity)|int }} ₽</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr><td colspan="3"><strong>Итого</strong></td><td><strong>{{ order.total|int }} ₽</strong></td></tr>
+        </tfoot>
+    </table>
+</div>
+
+<div class="account-card mt-20">
+    <h3>Смена статуса</h3>
+    {% if allowed %}
+    <div class="admin-actions">
+        {% for s in allowed %}
+        <form method="post" action="/shop/admin/orders/{{ order.id }}/status"
+              {% if s == 'cancelled' %}onsubmit="return confirm('Отменить заказ №{{ order.id }}? Остатки товаров автоматически не вернутся.');"{% endif %}>
+            <input type="hidden" name="new_status" value="{{ s }}">
+            <button type="submit" class="btn {% if s == 'cancelled' %}btn-danger{% else %}btn-primary{% endif %}">
+                {% if s == 'paid' %}Подтвердить оплату
+                {% elif s == 'completed' %}Отметить выполненным
+                {% else %}Отменить заказ{% endif %}
+            </button>
+        </form>
+        {% endfor %}
+    </div>
+    <p class="field-hint">При отмене остатки товаров не возвращаются автоматически (открытый вопрос OQ-014): при необходимости поправьте их в разделе «Каталог».</p>
+    {% else %}
+    <p class="field-hint">Заказ в финальном статусе, изменить его нельзя.</p>
+    {% endif %}
+</div>
+
+<div class="account-card mt-20">
+    <h3>История изменений</h3>
+    <div class="kv"><span>{{ order.created_at.strftime('%d.%m.%Y %H:%M') }}</span><span>Заказ создан</span></div>
+    {% for log in order.status_log_rel %}
+    <div class="kv">
+        <span>{{ log.created_at.strftime('%d.%m.%Y %H:%M') }} · {{ log.changed_by_rel.login or log.changed_by_rel.email if log.changed_by_rel else '—' }}</span>
+        <span>{{ log.from_status|status_label }} → {{ log.to_status|status_label }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Админ-панель — Магазин мамы{% endblock %}
+
+{% block content %}
+<section class="admin-header">
+    <div class="container">
+        <p class="auth-eyebrow">УПРАВЛЕНИЕ МАГАЗИНОМ</p>
+        <h1>Админ-панель</h1>
+        <nav class="admin-tabs">
+            <a href="/shop/admin" class="{% if admin_tab == 'dashboard' %}active{% endif %}">📊 Обзор</a>
+            <a href="/shop/admin/orders" class="{% if admin_tab == 'orders' %}active{% endif %}">📦 Заказы</a>
+            <a href="/shop/admin/items" class="{% if admin_tab == 'items' %}active{% endif %}">🛍 Каталог</a>
+            <a href="/shop/admin/users" class="{% if admin_tab == 'users' %}active{% endif %}">👥 Пользователи</a>
+        </nav>
+    </div>
+</section>
+
+<section class="section admin-section">
+    <div class="container">
+        {% if notice %}<div class="form-success">{{ notice }}</div>{% endif %}
+        {% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+        {% block admin_content %}{% endblock %}
+    </div>
+</section>
+{% endblock %}

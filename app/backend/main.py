@@ -1,6 +1,5 @@
 from typing import List, Optional
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.backend.models import Item, ItemType
@@ -24,37 +23,25 @@ from app.backend.services.order_service import create_order_from_cart, get_user_
 from app.backend.services.user_service import (
     ProfileError, ensure_login, generate_unique_login, update_profile, change_password,
 )
+from app.backend.templating import templates
+from app.backend.auth import LoginRequired, AdminRequired
+from app.backend.routers.admin import router as admin_router
 
 app = FastAPI(title="Магазин мамы", version="0.5.0")
 
 app.mount("/static", StaticFiles(directory="app/backend/static"), name="static")
-STATUS_LABELS = {
-    "awaiting_payment": "Ожидает оплаты",
-    "paid": "Оплачен",
-    "completed": "Выполнен",
-    "cancelled": "Отменён",
-}
-
-
-def header_user_context(request: Request) -> dict:
-    """Выполняется при каждом рендере шаблона: шапка узнаёт, авторизован ли пользователь."""
-    token = request.cookies.get("access_token")
-    user_id = decode_access_token(token) if token else None
-    if user_id is None:
-        return {"current_user": None}
-    db = SessionLocal()
-    try:
-        user = db.query(UserORM).filter(UserORM.id == user_id).first()
-        return {"current_user": {"id": user.id, "login": user.login} if user else None}
-    finally:
-        db.close()
-
-
-templates = Jinja2Templates(directory="app/backend/templates", context_processors=[header_user_context])
-templates.env.filters["status_label"] = lambda s: STATUS_LABELS.get(getattr(s, "value", s), str(s))
 
 app.include_router(auth_router)
 app.include_router(cart_router)
+app.include_router(admin_router)
+
+@app.exception_handler(LoginRequired)
+async def login_required_handler(request: Request, exc: LoginRequired):
+    return RedirectResponse(url="/shop/login", status_code=303)
+
+@app.exception_handler(AdminRequired)
+async def admin_required_handler(request: Request, exc: AdminRequired):
+    return templates.TemplateResponse(request=request, name="403.html", context={}, status_code=403)
 
 
 # --- Items API ---
@@ -80,7 +67,7 @@ def get_items(
 
 @app.get("/api/items/{item_id}", response_model=Item, tags=["items"])
 def get_item(item_id: int, db: Session = Depends(get_db)):
-    item = db.query(ItemORM).filter(ItemORM.id == item_id).first()
+    item = db.query(ItemORM).filter(ItemORM.id == item_id, ItemORM.is_active.is_(True)).first()
     if item is None:
         raise HTTPException(status_code=404, detail="Item not found")
     return item
@@ -90,7 +77,7 @@ def get_item(item_id: int, db: Session = Depends(get_db)):
 
 @app.get("/shop")
 def shop_page(request: Request, db: Session = Depends(get_db)):
-    items = db.query(ItemORM).order_by(ItemORM.id).all()
+    items = db.query(ItemORM).filter(ItemORM.is_active.is_(True)).order_by(ItemORM.id).all()
     return templates.TemplateResponse(
         request=request, name="items.html", context={"items": items}
     )
@@ -123,7 +110,7 @@ def catalog_page(
 
 @app.get("/shop/items/{item_id}")
 def item_detail_page(item_id: int, request: Request, db: Session = Depends(get_db)):
-    item = db.query(ItemORM).filter(ItemORM.id == item_id).first()
+    item = db.query(ItemORM).filter(ItemORM.id == item_id, ItemORM.is_active.is_(True)).first()
     if item is None:
         return templates.TemplateResponse(
             request=request, name="404.html",
@@ -321,7 +308,6 @@ def ru_error(detail: str) -> str:
 
 
 def login_redirect(request: Request):
-    # Для HTMX обычный 303 не годится: он подставил бы страницу логина в кусок страницы
     if is_htmx(request):
         return Response(status_code=200, headers={"HX-Redirect": "/shop/login"})
     return RedirectResponse(url="/shop/login", status_code=303)

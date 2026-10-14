@@ -1,0 +1,50 @@
+{% extends "admin/_layout.html" %}
+
+{% block admin_content %}
+<div class="admin-toolbar">
+    <form method="get" action="/shop/admin/items" class="admin-search">
+        <input type="search" name="q" value="{{ q }}" placeholder="Поиск по названию" class="form-control">
+        <button type="submit" class="btn btn-outline btn-sm">Найти</button>
+    </form>
+    <a href="/shop/admin/items/new" class="btn btn-primary btn-sm">＋ Новая позиция</a>
+</div>
+
+<div class="table-scroll">
+    <table class="admin-table">
+        <thead>
+            <tr><th>ID</th><th>Название</th><th>Тип</th><th>Категория</th><th>Цена</th><th>Остаток / срок</th><th>Статус</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for item in items %}
+            <tr class="{% if not item.is_active %}row-hidden{% elif item.stock_quantity is not none and item.stock_quantity <= threshold %}row-low{% endif %}">
+                <td>{{ item.id }}</td>
+                <td><a href="/shop/admin/items/{{ item.id }}/edit">{{ item.name }}</a></td>
+                <td>{% if item.item_type == 'service' %}<span class="badge badge-service">Услуга</span>{% else %}<span class="badge badge-product">Товар</span>{% endif %}</td>
+                <td>{{ item.category }}</td>
+                <td>{{ item.price|int }} ₽</td>
+                <td>
+                    {% if item.item_type == 'product' %}
+                    <form method="post" action="/shop/admin/items/{{ item.id }}/stock" class="stock-form">
+                        <input type="number" name="stock_quantity" value="{{ item.stock_quantity }}" min="0" class="form-control form-control-sm">
+                        <button type="submit" class="btn btn-outline btn-sm">OK</button>
+                    </form>
+                    {% else %}
+                        {{ item.duration_days }} дн.
+                    {% endif %}
+                </td>
+                <td>{% if item.is_active %}Активна{% else %}Скрыта{% endif %}</td>
+                <td class="admin-actions">
+                    <a href="/shop/admin/items/{{ item.id }}/edit">Изменить</a>
+                    <form method="post" action="/shop/admin/items/{{ item.id }}/toggle">
+                        <button type="submit" class="remove-link">{% if item.is_active %}Скрыть{% else %}Показать{% endif %}</button>
+                    </form>
+                </td>
+            </tr>
+        {% else %}
+            <tr><td colspan="8">Ничего не найдено</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+<p class="field-hint">Жёлтым выделены товары с остатком ≤ {{ threshold }}. Скрытые позиции не видны покупателям и не попадают в API каталога.</p>
+{% endblock %}

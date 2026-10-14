@@ -77,3 +77,18 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> UserORM
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     return user
+
+class LoginRequired(Exception):
+    """Нужна авторизация: для веб-страниц это редирект на /shop/login."""
+
+
+class AdminRequired(Exception):
+    """Недостаточно прав: для веб-страниц это страница 403."""
+
+
+def require_admin(current_user: Optional[UserORM] = Depends(get_current_user_optional)) -> UserORM:
+    if current_user is None:
+        raise LoginRequired()
+    if current_user.role != "admin":
+        raise AdminRequired()
+    return current_user

@@ -7,7 +7,12 @@
     <div class="container">
         <p class="auth-eyebrow">ВАШ ПРОФИЛЬ</p>
         <h1>Личный кабинет</h1>
-        <p class="section-subtitle">Здравствуйте, {{ user.login }}!</p>
+        <p class="section-subtitle">Здравствуйте, {{ user.login }}!
+            {% if user.role == 'admin' %}
+        <span class="role-badge">Администратор</span>
+        <a href="/shop/admin" class="btn btn-outline btn-sm">🛠 Админ-панель</a>
+            {% endif %}
+        </p>
     </div>
 </section>
 
