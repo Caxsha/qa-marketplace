@@ -10,7 +10,7 @@
         <p class="section-subtitle">Здравствуйте, {{ user.login }}!
             {% if user.role == 'admin' %}
         <span class="role-badge">Администратор</span>
-        <a href="/shop/admin" class="btn btn-outline btn-sm">🛠 Админ-панель</a>
+        <a href="/shop/admin" class="btn btn-outline btn-sm">{{ icon('admin') }} Админ-панель</a>
             {% endif %}
         </p>
     </div>

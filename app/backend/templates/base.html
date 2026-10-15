@@ -16,7 +16,7 @@
         <div class="container nav-container">
 
             <a href="/shop" class="logo">
-                <span class="logo-icon">🧺</span>
+                <span class="logo-icon">{{ icon('basket') }}</span>
 
                 <div class="logo-text">
                     <strong>Магазин мамы</strong>
@@ -39,10 +39,10 @@
             </label>
 
             <nav class="nav-links">
-                <a href="/shop/catalog">📦 Каталог</a>
+                <a href="/shop/catalog">{{ icon('catalog') }} Каталог</a>
 
                 <a href="/shop/cart">
-                    🛒 Корзина
+                    {{ icon('cart') }} Корзина
                     <span
                         id="cart-badge"
                         class="cart-badge"
@@ -53,13 +53,13 @@
                 </a>
 
                 {% if current_user and current_user.is_admin %}
-                    <a href="/shop/admin">🛠 Админ-панель</a>
+                    <a href="/shop/admin">{{ icon('admin') }} Админ-панель</a>
                 {% endif %}
 
                 {% if current_user %}
-                    <a href="/shop/account">👤 Личный кабинет</a>
+                    <a href="/shop/account">{{ icon('user') }} Личный кабинет</a>
                 {% else %}
-                    <a href="/shop/login">👤 Войти</a>
+                    <a href="/shop/login">{{ icon('user') }} Войти</a>
                 {% endif %}
 
                 <a href="/shop/catalog" class="btn btn-primary btn-sm">
@@ -77,64 +77,67 @@
 
     <!-- Подвал сайта -->
     <footer class="footer">
-        <div class="container footer-grid">
-
-            <div class="footer-col">
+        <div class="container footer-top">
+            <div class="footer-brand">
                 <a href="/shop" class="logo logo-light">
-                    <span class="logo-icon">🧺</span>
-                    <strong>Магазин мамы</strong>
+                    <span class="logo-icon">{{ icon('basket') }}</span>
+                    <strong>{{ shop.name }}</strong>
                 </a>
-
-                <p class="footer-desc">
-                    Домашние продукты и услуги с любовью —
-                    от Надежды для вас и ваших близких.
-                </p>
+                <p class="footer-desc">{{ shop.tagline }}</p>
+                <ul class="footer-badges">
+                    <li>{{ icon('card') }} Оплата по СБП</li>
+                    <li>{{ icon('truck') }} Доставка и самовывоз</li>
+                </ul>
             </div>
 
-            <div class="footer-col">
-                <h5>НАВИГАЦИЯ</h5>
-
+            <nav class="footer-col" aria-label="Покупателям">
+                <h5>Покупателям</h5>
                 <ul>
-                    <li>
-                        <a href="/shop/catalog">Каталог товаров</a>
-                    </li>
-
-                    <li>
-                        <a href="/shop/cart">Корзина</a>
-                    </li>
-
-                    {% if current_user and current_user.is_admin %}
-                        <li>
-                            <a href="/shop/admin">🛠 Админ-панель</a>
-                        </li>
+                 <li><a href="/shop/catalog">Каталог</a></li>
+                    <li><a href="/shop/cart">Корзина</a></li>
+                    {% if current_user %}
+                        <li><a href="/shop/account">Личный кабинет</a></li>
+                    {% else %}
+                        <li><a href="/shop/login">Войти</a></li>
                     {% endif %}
-
-                    <li>
-                        {% if current_user %}
-                            <a href="/shop/account">Личный кабинет</a>
-                        {% else %}
-                            <a href="/shop/login">Войти</a>
-                        {% endif %}
-                    </li>
+                    <li><a href="/shop/info/delivery">Доставка и оплата</a></li>
+                    <li><a href="/shop/info/returns">Возврат и обмен</a></li>
+                    {% if current_user and current_user.is_admin %}
+                        <li><a href="/shop/admin">{{ icon('admin') }} Админ-панель</a></li>
+                    {% endif %}
                 </ul>
-            </div>
+            </nav>
 
-            <div class="footer-col">
-                <h5>КОНТАКТЫ</h5>
-
+            <div class="footer-col footer-contacts">
+                <h5>Контакты</h5>
                 <ul class="contact-list">
-                    <li>📱 +7 (900) 123-45-67</li>
-                    <li>💬 WhatsApp / Telegram</li>
-                    <li>📍 Москва, самовывоз по договорённости</li>
-                    <li>🕒 Пн–Сб, 9:00–19:00</li>
+                    <li><a href="{{ shop.phone_href }}" class="footer-phone">{{ shop.phone }}</a></li>
+                    {% if shop.email %}<li><a href="mailto:{{ shop.email }}">{{ shop.email }}</a></li>{% endif %}
+                    <li>{{ icon('pin') }} {{ shop.city }}, {{ shop.pickup_note }}</li>
+                    <li>{{ icon('clock') }} {{ shop.hours }}</li>
                 </ul>
+                {% if shop.telegram or shop.whatsapp or shop.vk %}
+                <div class="footer-social">
+                    {% if shop.telegram %}<a class="social-btn" href="{{ shop.telegram }}" target="_blank" rel="noopener noreferrer">Telegram</a>{% endif %}
+                    {% if shop.whatsapp %}<a class="social-btn" href="{{ shop.whatsapp }}" target="_blank" rel="noopener noreferrer">WhatsApp</a>{% endif %}
+                    {% if shop.vk %}<a class="social-btn" href="{{ shop.vk }}" target="_blank" rel="noopener noreferrer">VK</a>{% endif %}
+                </div>
+                {% endif %}
             </div>
-
         </div>
 
         <div class="container footer-bottom">
-            <p>&copy; 2026 Магазин мамы. Все права защищены.</p>
-            <p>Сделано с ❤️ для семейных покупок</p>
+            <div class="footer-bottom-main">
+                <p>© {{ current_year }} {{ shop.name }}</p>
+                {% if shop.seller_name %}
+                <p class="footer-seller">{{ shop.seller_status }} {{ shop.seller_name }}{% if shop.seller_inn %} · ИНН {{ shop.seller_inn }}{% endif %}</p>
+                {% endif %}
+            </div>
+            <nav class="footer-legal" aria-label="Правовая информация">
+                <a href="/shop/info/privacy">Политика конфиденциальности</a>
+                <a href="/shop/info/offer">Публичная оферта</a>
+            </nav>
+            <a href="#" class="to-top">Наверх ↑</a>
         </div>
     </footer>
 

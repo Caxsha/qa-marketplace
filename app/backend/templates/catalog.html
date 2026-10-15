@@ -15,7 +15,7 @@
         <form id="catalog-filters" method="get" action="/shop/catalog"></form>
 
         <div class="search-bar">
-            <span class="search-icon">🔍</span>
+            <span class="search-icon">{{ icon('search') }}</span>
             <input type="text" name="search" form="catalog-filters" value="{{ search }}"
                    placeholder="Поиск по названию..." class="search-input">
         </div>

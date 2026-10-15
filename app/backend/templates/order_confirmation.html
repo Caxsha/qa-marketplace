@@ -34,7 +34,7 @@
 
         {% if order.status.value == 'awaiting_payment' %}
         <div class="payment-note">
-            <strong>Оплата переводом:</strong> +7 (900) 123-45-67 (СБП)<br>
+            <strong>Оплата переводом:</strong> {{ shop.phone }}<br>
             После оплаты заказ будет подтверждён вручную.
         </div>
         {% endif %}

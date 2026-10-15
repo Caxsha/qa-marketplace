@@ -48,7 +48,7 @@
             {% if item.duration_days is not none %}
                 <div class="availability">
                     <span class="dot"></span>
-                    ⏱ Срок выполнения: {{ item.duration_days }} дн.
+                    {{ icon('timer') }}  Срок выполнения: {{ item.duration_days }} дн.
                 </div>
             {% endif %}
 

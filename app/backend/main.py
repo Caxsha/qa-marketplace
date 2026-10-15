@@ -167,8 +167,17 @@ def register_submit(
     request: Request,
     email: str = Form(...),
     password: str = Form(...),
+    agree: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
+    if not agree:
+        return templates.TemplateResponse(
+            request=request,
+            name="register.html",
+            context={"error": "Необходимо принять политику конфиденциальности и оферту"},
+            status_code=400,
+        )
+
     if len(password) < 8:
         return templates.TemplateResponse(
             request=request,
@@ -227,6 +236,26 @@ def render_account(request: Request, db: Session, user: UserORM, *, error=None,
             "error": error, "error_section": error_section, "notice": notice,
         },
         status_code=status_code,
+    )
+
+INFO_PAGES = {
+    "delivery": "Доставка и оплата",
+    "returns": "Возврат и обмен",
+    "privacy": "Политика конфиденциальности",
+    "offer": "Публичная оферта",
+}
+
+
+@app.get("/shop/info/{slug}")
+def info_page(slug: str, request: Request):
+    title = INFO_PAGES.get(slug)
+    if title is None:
+        return templates.TemplateResponse(
+            request=request, name="404.html",
+            context={"message": "Страница не найдена"}, status_code=404,
+        )
+    return templates.TemplateResponse(
+        request=request, name="info.html", context={"slug": slug, "title": title}
     )
 
 

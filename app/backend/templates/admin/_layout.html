@@ -8,10 +8,10 @@
         <p class="auth-eyebrow">УПРАВЛЕНИЕ МАГАЗИНОМ</p>
         <h1>Админ-панель</h1>
         <nav class="admin-tabs">
-            <a href="/shop/admin" class="{% if admin_tab == 'dashboard' %}active{% endif %}">📊 Обзор</a>
-            <a href="/shop/admin/orders" class="{% if admin_tab == 'orders' %}active{% endif %}">📦 Заказы</a>
-            <a href="/shop/admin/items" class="{% if admin_tab == 'items' %}active{% endif %}">🛍 Каталог</a>
-            <a href="/shop/admin/users" class="{% if admin_tab == 'users' %}active{% endif %}">👥 Пользователи</a>
+            <a href="/shop/admin" class="{% if admin_tab == 'dashboard' %}active{% endif %}">{{ icon('pin') }} Обзор</a>
+            <a href="/shop/admin/orders" class="{% if admin_tab == 'orders' %}active{% endif %}">{{ icon('catalog') }} Заказы</a>
+            <a href="/shop/admin/items" class="{% if admin_tab == 'items' %}active{% endif %}">{{ icon('bag') }} Каталог</a>
+            <a href="/shop/admin/users" class="{% if admin_tab == 'users' %}active{% endif %}">{{ icon('users') }} Пользователи</a>
         </nav>
     </div>
 </section>
