@@ -1,12 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.backend.database import get_db
-from app.backend.db_models import UserORM
-from app.backend.models import UserCreate, UserOut, LoginRequest, TokenResponse
 from app.backend.auth import (
-    hash_password, verify_password, create_access_token,
-    get_current_user, ACCESS_TOKEN_EXPIRE_SECONDS, COOKIE_SECURE,
+    ACCESS_TOKEN_EXPIRE_SECONDS, authenticate, create_access_token,
+    get_current_user, hash_password, set_auth_cookie,
+)
+from app.backend.database import get_db
+from app.backend.db_models import RoleORM, UserORM
+from app.backend.models import LoginRequest, TokenResponse, UserCreate, UserOut
+from app.backend.security import (
+    client_ip, login_limiter_email, login_limiter_ip, register_limiter, validate_new_password,
 )
 from app.backend.services.user_service import generate_unique_login
 
@@ -14,13 +18,25 @@ router = APIRouter(prefix="/api")
 
 
 @router.post("/auth/register", response_model=UserOut, status_code=status.HTTP_201_CREATED, tags=["auth"])
-def register(payload: UserCreate, db: Session = Depends(get_db)):
-    existing = db.query(UserORM).filter(UserORM.email == payload.email).first()
-    if existing:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+def register(payload: UserCreate, request: Request, db: Session = Depends(get_db)):
+    ip = client_ip(request)
+    if register_limiter.is_blocked(ip):
+        raise HTTPException(status_code=429, detail="Too many attempts, try again later")
+    register_limiter.hit(ip)
+
+    try:
+        validate_new_password(payload.password)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Password must be 8 to 72 bytes long")
+
+    email = payload.email.lower()
+    if db.query(UserORM.id).filter(func.lower(UserORM.email) == email).first():
+        raise HTTPException(status_code=409, detail="Email already registered")
+
+    default_role = db.query(RoleORM).filter(RoleORM.role_name == "user").first()
     user = UserORM(
-        email=payload.email,
-        login=generate_unique_login(db, payload.email),
+        email=email,
+        login=generate_unique_login(db, email),
         password_hash=hash_password(payload.password),
         id_role=default_role.id,
     )
@@ -31,17 +47,21 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/auth/login", response_model=TokenResponse, tags=["auth"])
-def login(payload: LoginRequest, response: Response, db: Session = Depends(get_db)):
-    user = db.query(UserORM).filter(UserORM.email == payload.email).first()
-    if not user or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+def login(payload: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+    email = payload.email.lower()
+    ip = client_ip(request)
+    if login_limiter_ip.is_blocked(ip) or login_limiter_email.is_blocked(email):
+        raise HTTPException(status_code=429, detail="Too many attempts, try again later")
 
-    token = create_access_token(user.id)
-    response.set_cookie(
-        key="access_token", value=token, httponly=True,
-        secure=COOKIE_SECURE, samesite="lax", max_age=ACCESS_TOKEN_EXPIRE_SECONDS,
-    )
-    return TokenResponse(access_token=token, expires_in=ACCESS_TOKEN_EXPIRE_SECONDS)
+    user = db.query(UserORM).filter(func.lower(UserORM.email) == email).first()
+    if not authenticate(user, payload.password):
+        login_limiter_ip.hit(ip)
+        login_limiter_email.hit(email)
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    login_limiter_email.reset(email)
+    set_auth_cookie(response, request, create_access_token(user.id))
+    return TokenResponse(access_token=create_access_token(user.id), expires_in=ACCESS_TOKEN_EXPIRE_SECONDS)
 
 
 @router.post("/auth/logout", tags=["auth"])

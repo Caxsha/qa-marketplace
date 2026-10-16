@@ -2,7 +2,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 
 from app.backend.db_models import ItemORM, ItemTypeORM, CategoryORM
-
+from app.backend.security import like_escape
 
 def query_items(
     db: Session,
@@ -29,6 +29,7 @@ def query_items(
     if max_price is not None:
         query = query.filter(ItemORM.price <= max_price)
     if search:
-        query = query.filter(ItemORM.name.ilike(f"%{search}%"))
+        pattern = f"%{like_escape(search.strip()[:100])}%"
+        query = query.filter(ItemORM.name.ilike(pattern, escape="\\"))
 
     return query.order_by(ItemORM.id).all()

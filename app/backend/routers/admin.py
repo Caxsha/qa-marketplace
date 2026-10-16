@@ -13,7 +13,7 @@ from app.backend.services.admin_service import AdminError
 from app.backend.templating import templates
 
 # include_in_schema=False: HTML-страницы не засоряют Swagger
-router = APIRouter(prefix="/shop/admin", include_in_schema=False)
+router = APIRouter(prefix="/shop/admin", include_in_schema=False, dependencies=[Depends(require_admin)])
 
 NOTICES = {
     "status": "Статус заказа обновлён ✓",

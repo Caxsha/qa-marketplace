@@ -62,7 +62,7 @@
 <script>
     function syncType() {
         const checked = document.querySelector('input[name="item_type"]:checked');
-        const type = checked ? checked.value : '{{ form.item_type }}';
+        const type = checked ? checked.value : {{ form.item_type|tojson }};
         document.getElementById('stock-group').style.display = type === 'product' ? 'block' : 'none';
         document.getElementById('duration-group').style.display = type === 'service' ? 'block' : 'none';
     }

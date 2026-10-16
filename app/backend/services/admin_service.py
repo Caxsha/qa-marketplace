@@ -10,6 +10,7 @@ from app.backend.constants import (
 from app.backend.db_models import (
     CategoryORM, ItemORM, ItemTypeORM, OrderORM, OrderStatusLogORM, UserORM,
 )
+from app.backend.security import like_escape
 
 
 class AdminError(Exception):
@@ -125,7 +126,8 @@ def _parse_price(value) -> float:
 def list_items_admin(db: Session, search: Optional[str] = None):
     query = db.query(ItemORM).order_by(ItemORM.id)
     if search and search.strip():
-        query = query.filter(ItemORM.name.ilike(f"%{search.strip()}%"))
+        pattern = f"%{like_escape(search.strip()[:100])}%"
+        query = query.filter(ItemORM.name.ilike(pattern, escape="\\"))
     return query.all()
 
 
@@ -204,6 +206,9 @@ def list_users(db: Session, search: Optional[str] = None):
         .order_by(UserORM.id)
     )
     if search and search.strip():
-        pattern = f"%{search.strip()}%"
-        query = query.filter(or_(UserORM.email.ilike(pattern), UserORM.login.ilike(pattern)))
+        pattern = f"%{like_escape(search.strip()[:100])}%"
+        query = query.filter(or_(
+            UserORM.email.ilike(pattern, escape="\\"),
+            UserORM.login.ilike(pattern, escape="\\"),
+        ))
     return query.all()

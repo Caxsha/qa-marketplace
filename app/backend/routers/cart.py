@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.backend.database import get_db
@@ -16,11 +16,11 @@ router = APIRouter(prefix="/api/cart", tags=["cart"])
 
 class AddCartItemRequest(BaseModel):
     item_id: int
-    quantity: int = 1
+    quantity: int = Field(1, ge=1, le=100)
 
 
 class UpdateCartItemRequest(BaseModel):
-    quantity: int
+    quantity: int = Field(ge=1, le=100)
 
 
 @router.get("", response_model=CartOut)
