@@ -18,6 +18,7 @@ from app.backend.services.cart_service import (
 )
 from app.backend.routers.auth import router as auth_router
 from app.backend.routers.cart import router as cart_router
+from app.backend.routers.orders import router as orders_router
 from app.backend.db_models import (
     ItemORM, CategoryORM, UserORM, RoleORM, CartORM,
 )
@@ -78,11 +79,14 @@ async def security_middleware(request: Request, call_next):
         apply_security_headers(request, response)
         return response
 
-    # Bearer-запросы не используют cookie для авторизации, поэтому CSRF
-    # проверка источника для них не требуется.
+    auth_header = request.headers.get("authorization", "")
+    uses_bearer = auth_header.lower().startswith("bearer ")
+    uses_session_cookie = "access_token" in request.cookies and not uses_bearer
+
+    # Проверяем источник изменяющих запросов, которые могут использовать cookie.
     if (
         request.method not in SAFE_METHODS
-        and "authorization" not in request.headers
+        and uses_session_cookie
         and not origin_is_trusted(request)
     ):
         response = PlainTextResponse(
@@ -99,6 +103,7 @@ app.mount("/static", StaticFiles(directory="app/backend/static"), name="static")
 
 app.include_router(auth_router)
 app.include_router(cart_router)
+app.include_router(orders_router)
 app.include_router(admin_router)
 
 @app.exception_handler(LoginRequired)
@@ -227,7 +232,7 @@ def login_submit(
 
     login_limiter_email.reset(email)
     response = RedirectResponse(url="/shop", status_code=303)
-    set_auth_cookie(response, request, create_access_token(user.id))
+    set_auth_cookie(response, request, create_access_token(user.id, user.token_version))
     return response
 
 
@@ -289,7 +294,7 @@ def register_submit(
     db.refresh(user)
 
     response = RedirectResponse(url="/shop", status_code=303)
-    set_auth_cookie(response, request, create_access_token(user.id))
+    set_auth_cookie(response, request, create_access_token(user.id, user.token_version))
     return response
 
 
@@ -384,7 +389,9 @@ def account_password_submit(
     except ProfileError as e:
         return render_account(request, db, current_user, error=e.message,
                               error_section="password", status_code=e.status_code)
-    return RedirectResponse(url="/shop/account?notice=password", status_code=303)
+    response = RedirectResponse(url="/shop/account?notice=password", status_code=303)
+    set_auth_cookie(response, request, create_access_token(current_user.id, current_user.token_version))
+    return response
 
 
 @app.post("/shop/logout")
@@ -411,6 +418,8 @@ def ru_error(detail: str) -> str:
         return f"Недостаточно товара на складе: осталось {left} шт."
     if detail.startswith("Insufficient stock for item:"):
         return "Недостаточно товара на складе: " + detail.split(":", 1)[1].strip()
+    if detail.startswith("Item is no longer available:"):
+        return "Позиция больше недоступна: " + detail.split(":", 1)[1].strip()
     return ERROR_TRANSLATIONS.get(detail, detail)
 
 
@@ -555,7 +564,7 @@ def checkout_submit(
     if current_user is None:
         return RedirectResponse(url="/shop/login", status_code=303)
     try:
-        order = create_order_from_cart(db, current_user.id, fulfillment_method, address)
+        order, _ = create_order_from_cart(db, current_user.id, fulfillment_method, address)
     except HTTPException as e:
         cart = get_or_create_cart(db, current_user.id)
         cart_data = build_cart_response(db, cart)

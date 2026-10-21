@@ -97,9 +97,9 @@ def client_ip(request: Request) -> str:
 def origin_is_trusted(request: Request) -> bool:
     source = request.headers.get("origin") or request.headers.get("referer")
     if not source:
-        return True   # браузер всегда шлёт Origin при POST; без него это curl/Postman, а не атака через браузер
+        return False
     netloc = urlparse(source).netloc
-    allowed = {request.headers.get("host", ""), request.headers.get("x-forwarded-host", "")} | TRUSTED_HOSTS
+    allowed = {request.headers.get("host", "")} | TRUSTED_HOSTS
     return netloc != "" and netloc in allowed
 
 

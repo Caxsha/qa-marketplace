@@ -261,7 +261,7 @@ stateless (без чёрного списка токенов), для клиен
 | id | int | Идентификатор корзины |
 | user_id | int | Владелец корзины |
 | items | array\<CartItem\> | Позиции в корзине |
-| total | float | Сумма всех позиций (REQ-CART-004) |
+| total | decimal (JSON string) | Сумма всех позиций в рублях (REQ-CART-004) |
 
 **CartItem:**
 
@@ -270,9 +270,9 @@ stateless (без чёрного списка токенов), для клиен
 | item_id | int | Ссылка на Item |
 | name | string | Название (денормализовано для удобства чтения ответа) |
 | item_type | string | `product` \| `service` |
-| price | float | Цена на момент запроса |
+| price | decimal (JSON string) | Цена на момент запроса |
 | quantity | int | Количество, ≥ 1 |
-| subtotal | float | `price * quantity` |
+| subtotal | decimal (JSON string) | `price * quantity` |
 
 Все endpoint'ы ниже требуют авторизации: `Authorization: Bearer <token>` ИЛИ cookie `access_token`.
 При отсутствии/невалидности токена — единообразно `401 Unauthorized`, `{"detail": "Not authenticated"}`
@@ -382,7 +382,7 @@ stateless (без чёрного списка токенов), для клиен
 | id | int | Идентификатор заказа |
 | user_id | int | Владелец заказа |
 | items | array\<OrderItem\> | Снимок позиций на момент оформления |
-| total | float | Итоговая сумма |
+| total | decimal (JSON string) | Итоговая сумма с точностью до копейки |
 | fulfillment_method | string | `delivery` \| `pickup` (REQ-ORD-004) |
 | address | string \| null | Обязательно при `delivery`, иначе `null` |
 | status | string | `awaiting_payment` \| `paid` \| `completed` \| `cancelled` |
@@ -428,6 +428,7 @@ stateless (без чёрного списка токенов), для клиен
    заказ создаётся со статусом `awaiting_payment`.
 
 **Response 201 Created:** объект заказа.
+При повторе с тем же `Idempotency-Key` сервер возвращает `200 OK` и ранее созданный заказ.
 
 **Errors:**
 

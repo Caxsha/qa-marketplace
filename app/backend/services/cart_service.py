@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import List
 
 from sqlalchemy.orm import Session
@@ -22,7 +23,7 @@ def get_or_create_cart(db: Session, user_id: int) -> CartORM:
 
 def build_cart_response(db: Session, cart: CartORM) -> CartOut:
     items_out: List[CartItemOut] = []
-    total = 0.0
+    total = Decimal("0.00")
 
     for ci in cart.items_rel:
         item = ci.item_rel
@@ -137,6 +138,12 @@ def update_item_quantity(
     item_id: int,
     quantity: int,
 ) -> CartOut:
+    if quantity < 1 or quantity > MAX_QTY_PER_ITEM:
+        raise HTTPException(
+            status_code=422,
+            detail=f"quantity must be between 1 and {MAX_QTY_PER_ITEM}",
+        )
+
     cart = get_or_create_cart(db, user_id)
 
     cart_item = (
@@ -155,9 +162,6 @@ def update_item_quantity(
 
     if item.item_type == "service":
         return build_cart_response(db, cart)
-
-    if quantity < 1:
-        raise HTTPException(status_code=422, detail="quantity must be >= 1")
 
     if (
         item.stock_quantity is not None

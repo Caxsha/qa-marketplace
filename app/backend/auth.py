@@ -31,9 +31,9 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
     return pwd_context.verify(plain_password, password_hash)
 
 
-def create_access_token(user_id: int) -> str:
+def create_access_token(user_id: int, token_version: int = 0) -> str:
     expire = datetime.now(timezone.utc) + timedelta(seconds=ACCESS_TOKEN_EXPIRE_SECONDS)
-    payload = {"sub": str(user_id), "exp": expire}
+    payload = {"sub": str(user_id), "ver": token_version, "exp": expire}
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -43,6 +43,14 @@ def decode_access_token(token: str) -> Optional[int]:
         return int(payload.get("sub"))
     except (JWTError, ValueError, TypeError):
         return None
+
+
+def token_matches_user(token: str, user: UserORM) -> bool:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return int(payload.get("ver", 0)) == user.token_version
+    except (JWTError, ValueError, TypeError):
+        return False
 
 def get_current_user_optional(request: Request, db: Session = Depends(get_db)) -> Optional[UserORM]:
     token = None
@@ -58,7 +66,8 @@ def get_current_user_optional(request: Request, db: Session = Depends(get_db)) -
     if user_id is None:
         return None
 
-    return db.query(UserORM).filter(UserORM.id == user_id).first()
+    user = db.query(UserORM).filter(UserORM.id == user_id).first()
+    return user if user is not None and token_matches_user(token, user) else None
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> UserORM:
     token = None
@@ -76,6 +85,9 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> UserORM
 
     user = db.query(UserORM).filter(UserORM.id == user_id).first()
     if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    if not token_matches_user(token, user):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
     return user

@@ -1,4 +1,4 @@
-import math
+from decimal import Decimal, InvalidOperation
 from typing import Optional
 
 from sqlalchemy import func, or_
@@ -63,11 +63,11 @@ def change_order_status(db: Session, order: OrderORM, new_status: str, admin: Us
 
 # ---------- обзор ----------
 
-def _revenue(db: Session, *conditions) -> float:
-    total = db.query(func.coalesce(func.sum(OrderORM.total), 0)).filter(
+def _revenue(db: Session, *conditions) -> Decimal:
+    total = db.query(func.coalesce(func.sum(OrderORM.total), Decimal("0.00"))).filter(
         OrderORM.status.in_(["paid", "completed"]), *conditions
     ).scalar()
-    return float(total or 0)
+    return total or Decimal("0.00")
 
 
 def get_dashboard_stats(db: Session) -> dict:
@@ -111,16 +111,15 @@ def _parse_int(value, field: str, minimum: int) -> int:
     return number
 
 
-def _parse_price(value) -> float:
+def _parse_price(value) -> Decimal:
     text = str(value if value is not None else "").strip().replace(",", ".")
     try:
-        price = float(text)
-    except ValueError:
+        price = Decimal(text)
+    except InvalidOperation:
         raise AdminError("Цена: введите число")
-    # isfinite отсекает "nan" и "inf": float() их принимает, а сравнения с nan всегда ложны
-    if not math.isfinite(price) or price <= 0 or price > 1_000_000:
+    if not price.is_finite() or price <= 0 or price > Decimal("1000000"):
         raise AdminError("Цена: от 0.01 до 1 000 000 ₽")
-    return round(price, 2)
+    return price.quantize(Decimal("0.01"))
 
 
 def list_items_admin(db: Session, search: Optional[str] = None):

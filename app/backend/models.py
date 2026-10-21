@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from enum import Enum
 from typing import Optional
 from typing import List
@@ -15,7 +16,7 @@ class Item(BaseModel):
     id: int
     name: str
     description: Optional[str] = None
-    price: float
+    price: Decimal
     category: str
     item_type: ItemType
     stock_quantity: Optional[int] = None
@@ -56,16 +57,16 @@ class CartItemOut(BaseModel):
     item_id: int
     name: str
     item_type: ItemType
-    price: float
+    price: Decimal
     quantity: int
-    subtotal: float
+    subtotal: Decimal
 
 
 class CartOut(BaseModel):
     id: int
     user_id: int
     items: List[CartItemOut]
-    total: float
+    total: Decimal
 
 class FulfillmentMethod(str, Enum):
     DELIVERY = "delivery"
@@ -81,16 +82,26 @@ class OrderItemOut(BaseModel):
     item_id: Optional[int]
     name: str
     item_type: ItemType
-    price: float
+    price: Decimal
     quantity: int
-    subtotal: float
+    subtotal: Decimal
 
 class OrderOut(BaseModel):
     id: int
     user_id: int
     items: List[OrderItemOut]
-    total: float
+    total: Decimal
     fulfillment_method: FulfillmentMethod
     address: Optional[str]
     status: OrderStatus
     created_at: datetime
+    updated_at: datetime
+
+
+class CreateOrderRequest(BaseModel):
+    fulfillment_method: FulfillmentMethod
+    address: Optional[str] = Field(default=None, max_length=300)
+
+
+class OrderStatusUpdate(BaseModel):
+    status: OrderStatus

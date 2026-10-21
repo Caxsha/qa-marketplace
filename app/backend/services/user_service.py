@@ -3,10 +3,12 @@ import secrets
 from typing import Optional
 
 from pydantic import EmailStr, TypeAdapter, ValidationError
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.backend.auth import hash_password, verify_password
 from app.backend.db_models import UserORM
+from app.backend.security import validate_new_password
 
 LOGIN_RE = re.compile(r"^[a-z0-9._-]{3,30}$")
 PHONE_RE = re.compile(r"^[0-9+()\-\s]{5,20}$")
@@ -53,7 +55,7 @@ def ensure_login(db: Session, user: UserORM) -> UserORM:
 
 def update_profile(db: Session, user: UserORM, login: str, email: str, phone: Optional[str]) -> None:
     login = (login or "").strip().lower()
-    email = (email or "").strip()
+    email = (email or "").strip().lower()
     phone = (phone or "").strip() or None
 
     if not LOGIN_RE.match(login):
@@ -68,7 +70,9 @@ def update_profile(db: Session, user: UserORM, login: str, email: str, phone: Op
             _email_adapter.validate_python(email)
         except ValidationError:
             raise ProfileError("Введите корректный email")
-        if db.query(UserORM.id).filter(UserORM.email == email, UserORM.id != user.id).first():
+        if db.query(UserORM.id).filter(
+            func.lower(UserORM.email) == email, UserORM.id != user.id
+        ).first():
             raise ProfileError("Этот email уже зарегистрирован", 409)
 
     if phone and not PHONE_RE.match(phone):
@@ -84,7 +88,11 @@ def update_profile(db: Session, user: UserORM, login: str, email: str, phone: Op
 def change_password(db: Session, user: UserORM, current_password: str, new_password: str) -> None:
     if not verify_password(current_password, user.password_hash):
         raise ProfileError("Текущий пароль указан неверно")
-    if len(new_password) < 8:
-        raise ProfileError("Новый пароль должен содержать не менее 8 символов")
+    try:
+        validate_new_password(new_password)
+    except ValueError as e:
+        raise ProfileError(str(e)) from e
     user.password_hash = hash_password(new_password)
+    user.token_version += 1
     db.commit()
+    db.refresh(user)

@@ -34,6 +34,8 @@ def register(payload: UserCreate, request: Request, db: Session = Depends(get_db
         raise HTTPException(status_code=409, detail="Email already registered")
 
     default_role = db.query(RoleORM).filter(RoleORM.role_name == "user").first()
+    if default_role is None:
+        raise HTTPException(status_code=500, detail="Default user role is not configured")
     user = UserORM(
         email=email,
         login=generate_unique_login(db, email),
@@ -60,8 +62,9 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     login_limiter_email.reset(email)
-    set_auth_cookie(response, request, create_access_token(user.id))
-    return TokenResponse(access_token=create_access_token(user.id), expires_in=ACCESS_TOKEN_EXPIRE_SECONDS)
+    token = create_access_token(user.id, user.token_version)
+    set_auth_cookie(response, request, token)
+    return TokenResponse(access_token=token, expires_in=ACCESS_TOKEN_EXPIRE_SECONDS)
 
 
 @router.post("/auth/logout", tags=["auth"])

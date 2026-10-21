@@ -1,9 +1,13 @@
-from typing import Optional
+from decimal import Decimal
+from typing import Optional, Tuple
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.backend.db_models import ItemORM, OrderORM, OrderItemORM
-from app.backend.models import OrderOut, OrderItemOut
+from app.backend.constants import ALLOWED_TRANSITIONS
+from app.backend.db_models import (
+    CartORM, ItemORM, OrderORM, OrderItemORM, OrderStatusLogORM, UserORM,
+)
+from app.backend.models import OrderOut, OrderItemOut, OrderStatus
 from app.backend.services.cart_service import get_or_create_cart
 
 ALLOWED_FULFILLMENT = {"delivery", "pickup"}
@@ -20,14 +24,18 @@ def build_order_response(order: OrderORM) -> OrderOut:
     return OrderOut(
         id=order.id, user_id=order.user_id, items=items_out, total=order.total,
         fulfillment_method=order.fulfillment_method, address=order.address,
-        status=order.status, created_at=order.created_at,
+        status=order.status, created_at=order.created_at, updated_at=order.updated_at,
     )
 
 
 
 def create_order_from_cart(
-    db: Session, user_id: int, fulfillment_method: str, address: Optional[str]
-) -> OrderOut:
+    db: Session,
+    user_id: int,
+    fulfillment_method: str,
+    address: Optional[str],
+    idempotency_key: Optional[str] = None,
+) -> Tuple[OrderOut, bool]:
     fulfillment_method = (fulfillment_method or "").strip()
     if fulfillment_method not in ALLOWED_FULFILLMENT:
         raise HTTPException(status_code=422, detail="Invalid fulfillment method")
@@ -48,6 +56,17 @@ def create_order_from_cart(
         address = None
 
     cart = get_or_create_cart(db, user_id)
+    db.query(CartORM).filter(CartORM.id == cart.id).with_for_update().populate_existing().first()
+    db.expire(cart, ["items_rel"])
+
+    if idempotency_key:
+        existing = db.query(OrderORM).filter(
+            OrderORM.user_id == user_id,
+            OrderORM.idempotency_key == idempotency_key,
+        ).first()
+        if existing is not None:
+            return build_order_response(existing), True
+
     if not cart.items_rel:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
@@ -77,6 +96,13 @@ def create_order_from_cart(
                 detail=f"Item not found: {ci.item_id}",
             )
 
+        if not item.is_active:
+            db.rollback()
+            raise HTTPException(
+                status_code=400,
+                detail=f"Item is no longer available: {item.name}",
+            )
+
         if (
             item.item_type == "product"
             and item.stock_quantity is not None
@@ -87,8 +113,8 @@ def create_order_from_cart(
             raise HTTPException(status_code=400, detail=detail)
 
     total = sum(
-        locked[ci.item_id].price * ci.quantity
-        for ci in cart.items_rel
+        (locked[ci.item_id].price * ci.quantity for ci in cart.items_rel),
+        Decimal("0.00"),
     )
 
     order = OrderORM(
@@ -97,6 +123,7 @@ def create_order_from_cart(
         fulfillment_method=fulfillment_method,
         address=address,
         status="awaiting_payment",
+        idempotency_key=idempotency_key,
     )
     db.add(order)
     db.flush()
@@ -124,7 +151,7 @@ def create_order_from_cart(
     db.commit()
     db.refresh(order)
 
-    return build_order_response(order)
+    return build_order_response(order), False
 
 
 
@@ -146,3 +173,41 @@ def get_user_orders(db: Session, user_id: int):
         .all()
     )
     return [build_order_response(o) for o in orders]
+
+
+def change_user_order_status(
+    db: Session, user: UserORM, order_id: int, new_status: OrderStatus
+) -> OrderOut:
+    query = db.query(OrderORM).filter(OrderORM.id == order_id)
+    if user.role != "admin":
+        query = query.filter(OrderORM.user_id == user.id)
+    order = query.with_for_update().first()
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    target = new_status.value
+    allowed = ALLOWED_TRANSITIONS.get(order.status, []) if user.role == "admin" else []
+    if user.role == "user" and order.status == "awaiting_payment":
+        allowed = ["cancelled"]
+
+    if target not in allowed:
+        if user.role == "user" and target != "cancelled":
+            raise HTTPException(status_code=403, detail="Not allowed to perform this transition")
+        if user.role not in {"user", "admin"}:
+            raise HTTPException(status_code=403, detail="Not allowed to perform this transition")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid status transition: {order.status} → {target}",
+        )
+
+    old_status = order.status
+    order.status = target
+    db.add(OrderStatusLogORM(
+        order_id=order.id,
+        changed_by=user.id,
+        from_status=old_status,
+        to_status=target,
+    ))
+    db.commit()
+    db.refresh(order)
+    return build_order_response(order)

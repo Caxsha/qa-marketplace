@@ -1,4 +1,7 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, DateTime
+from sqlalchemy import (
+    Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func, expression
 
@@ -33,6 +36,7 @@ class UserORM(Base):
     login = Column(String, unique=True, nullable=True)
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
+    token_version = Column(Integer, nullable=False, default=0, server_default="0")
     phone = Column(String, nullable=True)
     id_role = Column(Integer, ForeignKey("roles.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -50,7 +54,7 @@ class ItemORM(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
-    price = Column(Float, nullable=False)
+    price = Column(Numeric(12, 2), nullable=False)
     id_category = Column(Integer, ForeignKey("categories.id"), nullable=False)
     id_item_type = Column(Integer, ForeignKey("item_types.id"), nullable=False)
     stock_quantity = Column(Integer, nullable=True)
@@ -91,14 +95,19 @@ class CartItemORM(Base):
 
 class OrderORM(Base):
     __tablename__ = "orders"
+    __table_args__ = (
+        UniqueConstraint("user_id", "idempotency_key", name="uq_orders_user_idempotency_key"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    total = Column(Float, nullable=False)
+    total = Column(Numeric(14, 2), nullable=False)
     fulfillment_method = Column(String, nullable=False)
     address = Column(String, nullable=True)
     status = Column(String, nullable=False, default="awaiting_payment")
+    idempotency_key = Column(String(100), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     user_rel = relationship("UserORM")
     items_rel = relationship("OrderItemORM", cascade="all, delete-orphan", order_by="OrderItemORM.id")
@@ -114,7 +123,7 @@ class OrderItemORM(Base):
     item_id = Column(Integer, ForeignKey("items.id"), nullable=True)
     name = Column(String, nullable=False)
     item_type = Column(String, nullable=False)
-    price = Column(Float, nullable=False)
+    price = Column(Numeric(12, 2), nullable=False)
     quantity = Column(Integer, nullable=False)
 
 
