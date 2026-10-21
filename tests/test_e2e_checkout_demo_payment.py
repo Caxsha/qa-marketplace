@@ -42,10 +42,10 @@ class DemoPaymentCheckoutE2ETests(unittest.TestCase):
                 ).click()
                 page.get_by_role("button", name="Оформить заказ").click()
                 page.wait_for_url(f"{BASE_URL}/shop/orders/**")
-                page.get_by_text("Ожидает оплаты").wait_for()
+                page.get_by_text("Ожидает оплаты", exact=True).wait_for()
 
                 page.get_by_role("button", name="Имитировать оплату картой").click()
-                page.get_by_text("Оплачен").wait_for()
+                page.get_by_text("Оплачен", exact=True).wait_for()
                 page.get_by_text("Реального списания не было.").wait_for()
 
                 order_id = page.url.rsplit("/", 1)[-1]
