@@ -9,6 +9,9 @@ from app.backend.db_models import (
 )
 from app.backend.models import OrderOut, OrderItemOut, OrderStatus
 from app.backend.services.cart_service import get_or_create_cart
+from app.backend.services.payment_service import (
+    cancel_pending_demo_payments, create_demo_payment, restore_order_inventory,
+)
 
 ALLOWED_FULFILLMENT = {"delivery", "pickup"}
 MAX_ADDRESS_LEN = 300
@@ -127,6 +130,7 @@ def create_order_from_cart(
     )
     db.add(order)
     db.flush()
+    create_demo_payment(db, order)
 
     for ci in cart.items_rel:
         item = locked[ci.item_id]
@@ -202,6 +206,9 @@ def change_user_order_status(
 
     old_status = order.status
     order.status = target
+    if target == "cancelled":
+        cancel_pending_demo_payments(db, order)
+        restore_order_inventory(db, order)
     db.add(OrderStatusLogORM(
         order_id=order.id,
         changed_by=user.id,

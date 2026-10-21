@@ -1,5 +1,7 @@
+import os
 import unittest
 from decimal import Decimal
+from unittest.mock import patch
 
 from fastapi import HTTPException
 from sqlalchemy import create_engine
@@ -8,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.backend.database import Base
 from app.backend.auth import create_access_token, token_matches_user
 from app.backend.db_models import (
-    CartItemORM, CategoryORM, ItemORM, ItemTypeORM, OrderORM, RoleORM, UserORM,
+    CartItemORM, CategoryORM, ItemORM, ItemTypeORM, OrderORM, PaymentORM, RoleORM, UserORM,
 )
 from app.backend.models import OrderStatus
 from app.backend.services.order_service import (
@@ -18,6 +20,10 @@ from app.backend.services.order_service import (
 
 class OrderServiceTests(unittest.TestCase):
     def setUp(self):
+        self.app_env = patch.dict(os.environ, {"APP_ENV": "development"})
+        self.app_env.start()
+        self.addCleanup(self.app_env.stop)
+
         self.engine = create_engine("sqlite:///:memory:")
         Base.metadata.create_all(self.engine)
         self.db = Session(self.engine)
@@ -72,6 +78,9 @@ class OrderServiceTests(unittest.TestCase):
         self.assertTrue(replayed_again)
         self.assertEqual(first.id, second.id)
         self.assertEqual(self.db.get(ItemORM, self.item.id).stock_quantity, 3)
+        self.assertEqual(
+            self.db.query(PaymentORM).filter(PaymentORM.order_id == first.id).count(), 1
+        )
 
     def test_hidden_item_is_not_ordered_or_decremented(self):
         self.item.is_active = False
@@ -91,6 +100,9 @@ class OrderServiceTests(unittest.TestCase):
             self.db, self.user, order.id, OrderStatus.CANCELLED
         )
         self.assertEqual(cancelled.status, OrderStatus.CANCELLED)
+        payment = self.db.query(PaymentORM).filter(PaymentORM.order_id == order.id).one()
+        self.assertEqual(payment.status, "canceled")
+        self.assertEqual(self.db.get(ItemORM, self.item.id).stock_quantity, 5)
 
     def test_admin_status_flow_and_owner_isolation(self):
         order, _ = create_order_from_cart(self.db, self.user.id, "pickup", None)

@@ -52,6 +52,10 @@ from app.backend.services.user_service import (
 )
 from app.backend.templating import templates
 from app.backend.routers.admin import router as admin_router
+from app.backend.services.payment_service import (
+    demo_payments_enabled, simulate_payment,
+)
+from app.backend.db_models import PaymentORM
 
 APP_ENV = os.getenv("APP_ENV", "development").lower()
 SHOW_DOCS = os.getenv(
@@ -593,9 +597,43 @@ def order_confirmation_page(
             request=request, name="404.html",
             context={"message": "Заказ не найден"}, status_code=404,
         )
+    payment = db.query(PaymentORM).filter(
+        PaymentORM.order_id == order.id, PaymentORM.provider == "demo",
+    ).order_by(PaymentORM.id.desc()).first()
     return templates.TemplateResponse(
-        request=request, name="order_confirmation.html", context={"order": order}
+        request=request, name="order_confirmation.html",
+        context={"order": order, "payment": payment,
+                 "demo_payments_enabled": demo_payments_enabled(), "payment_error": None},
     )
+
+
+@app.post("/shop/orders/{order_id}/demo-pay")
+def demo_pay_order(
+    order_id: int, request: Request, db: Session = Depends(get_db),
+    method: str = Form(...),
+    current_user: Optional[UserORM] = Depends(get_current_user_optional),
+):
+    if current_user is None:
+        return RedirectResponse(url="/shop/login", status_code=303)
+    try:
+        simulate_payment(db, order_id, current_user.id, method)
+    except HTTPException as exc:
+        try:
+            order = get_user_order(db, current_user.id, order_id)
+        except HTTPException:
+            return templates.TemplateResponse(
+                request=request, name="404.html", context={"message": "Заказ не найден"}, status_code=404,
+            )
+        payment = db.query(PaymentORM).filter(
+            PaymentORM.order_id == order.id, PaymentORM.provider == "demo",
+        ).order_by(PaymentORM.id.desc()).first()
+        return templates.TemplateResponse(
+            request=request, name="order_confirmation.html",
+            context={"order": order, "payment": payment,
+                     "demo_payments_enabled": demo_payments_enabled(),
+                     "payment_error": ru_error(exc.detail)}, status_code=exc.status_code,
+        )
+    return RedirectResponse(url=f"/shop/orders/{order_id}", status_code=303)
 
 
 @app.get("/")

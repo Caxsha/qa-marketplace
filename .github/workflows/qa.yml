@@ -1,0 +1,58 @@
+name: QA
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-and-migration:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: sqlite:///./qa_ci.db
+      JWT_SECRET_KEY: ci-only-secret-key-with-at-least-32-characters
+      APP_ENV: development
+      E2E_BASE_URL: http://127.0.0.1:8000
+      SEED_ADMIN_EMAIL: qa-admin@example.com
+      SEED_ADMIN_PASSWORD: CI-only-admin-password-123
+      E2E_ADMIN_EMAIL: qa-admin@example.com
+      E2E_ADMIN_PASSWORD: CI-only-admin-password-123
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: app/backend/requirements.txt
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements-test.txt
+
+      - name: Apply migrations to a clean SQLite database
+        run: python -m alembic upgrade head
+
+      - name: Seed isolated test data
+        run: python -m app.backend.seed
+
+      - name: Install Chromium for Playwright
+        run: python -m playwright install --with-deps chromium
+
+      - name: Start isolated test server
+        run: |
+          nohup python -m uvicorn app.backend.main:app --host 127.0.0.1 --port 8000 > uvicorn.log 2>&1 &
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8000/shop > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat uvicorn.log
+          exit 1
+
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v

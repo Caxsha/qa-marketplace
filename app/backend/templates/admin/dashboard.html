@@ -17,12 +17,16 @@
 </div>
 
 <div class="admin-stats">
-    <div class="stat-tile"><small>Выручка сегодня</small><strong>{{ stats.revenue_today|int }} ₽</strong></div>
-    <div class="stat-tile"><small>Выручка за месяц</small><strong>{{ stats.revenue_month|int }} ₽</strong></div>
-    <div class="stat-tile"><small>Выручка всего</small><strong>{{ stats.revenue_total|int }} ₽</strong></div>
+    <div class="stat-tile"><small>Демо-оплаты сегодня</small><strong>{{ stats.revenue_today|int }} ₽</strong></div>
+    <div class="stat-tile"><small>Демо-оплаты за месяц</small><strong>{{ stats.revenue_month|int }} ₽</strong></div>
+    <div class="stat-tile"><small>Демо-оплаты всего</small><strong>{{ stats.revenue_total|int }} ₽</strong></div>
     <div class="stat-tile"><small>Пользователей</small><strong>{{ stats.users_count }}</strong></div>
 </div>
-<p class="field-hint">Выручка: оплаченные и выполненные заказы, по дате создания заказа.</p>
+<p class="field-hint">Это суммы симуляций для тестовой статистики, а не реальные банковские операции.</p>
+<div class="admin-stats">
+    <div class="stat-tile"><small>Карта (демо)</small><strong>{{ stats.demo_payment_methods.card }}</strong></div>
+    <div class="stat-tile"><small>СБП (демо)</small><strong>{{ stats.demo_payment_methods.sbp }}</strong></div>
+</div>
 
 <div class="admin-two-col">
     <div class="account-card">

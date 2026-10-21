@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 
@@ -8,9 +9,12 @@ from app.backend.constants import (
     ALLOWED_TRANSITIONS, LOW_STOCK_THRESHOLD, ORDER_STATUSES, STATUS_LABELS,
 )
 from app.backend.db_models import (
-    CategoryORM, ItemORM, ItemTypeORM, OrderORM, OrderStatusLogORM, UserORM,
+    CategoryORM, ItemORM, ItemTypeORM, OrderORM, OrderStatusLogORM, PaymentORM, UserORM,
 )
 from app.backend.security import like_escape
+from app.backend.services.payment_service import (
+    cancel_pending_demo_payments, restore_order_inventory,
+)
 
 
 class AdminError(Exception):
@@ -55,6 +59,9 @@ def change_order_status(db: Session, order: OrderORM, new_status: str, admin: Us
         )
 
     order.status = new_status
+    if new_status == "cancelled":
+        cancel_pending_demo_payments(db, order)
+        restore_order_inventory(db, order)
     db.add(OrderStatusLogORM(
         order_id=order.id, changed_by=admin.id, from_status=old_status, to_status=new_status,
     ))
@@ -63,14 +70,22 @@ def change_order_status(db: Session, order: OrderORM, new_status: str, admin: Us
 
 # ---------- обзор ----------
 
-def _revenue(db: Session, *conditions) -> Decimal:
-    total = db.query(func.coalesce(func.sum(OrderORM.total), Decimal("0.00"))).filter(
-        OrderORM.status.in_(["paid", "completed"]), *conditions
+def _demo_revenue(db: Session, *conditions) -> Decimal:
+    total = db.query(func.coalesce(func.sum(PaymentORM.amount), Decimal("0.00"))).filter(
+        PaymentORM.provider == "demo", PaymentORM.status == "succeeded", *conditions
     ).scalar()
     return total or Decimal("0.00")
 
 
 def get_dashboard_stats(db: Session) -> dict:
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    tomorrow_start = today_start + timedelta(days=1)
+    month_start = today_start.replace(day=1)
+    next_month_start = month_start.replace(
+        year=month_start.year + (month_start.month == 12),
+        month=1 if month_start.month == 12 else month_start.month + 1,
+    )
     low_stock = (
         db.query(ItemORM)
         .filter(
@@ -82,14 +97,24 @@ def get_dashboard_stats(db: Session) -> dict:
         .all()
     )
     recent_orders = db.query(OrderORM).order_by(OrderORM.created_at.desc(), OrderORM.id.desc()).limit(5).all()
+    method_rows = dict(
+        db.query(PaymentORM.payment_method, func.count(PaymentORM.id))
+        .filter(PaymentORM.provider == "demo", PaymentORM.status == "succeeded")
+        .group_by(PaymentORM.payment_method).all()
+    )
     return {
         "counts": order_counts(db),
-        # Выручку считаем по дате создания заказа: даты оплаты в модели нет
-        "revenue_today": _revenue(db, func.date(OrderORM.created_at) == func.current_date()),
-        "revenue_month": _revenue(
-            db, func.date_trunc("month", OrderORM.created_at) == func.date_trunc("month", func.now())
+        "revenue_today": _demo_revenue(
+            db, PaymentORM.paid_at >= today_start, PaymentORM.paid_at < tomorrow_start
         ),
-        "revenue_total": _revenue(db),
+        "revenue_month": _demo_revenue(
+            db, PaymentORM.paid_at >= month_start, PaymentORM.paid_at < next_month_start
+        ),
+        "revenue_total": _demo_revenue(db),
+        "demo_payment_methods": {
+            "card": method_rows.get("card", 0),
+            "sbp": method_rows.get("sbp", 0),
+        },
         "users_count": db.query(func.count(UserORM.id)).scalar(),
         "low_stock": low_stock,
         "recent_orders": recent_orders,

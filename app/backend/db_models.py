@@ -106,6 +106,7 @@ class OrderORM(Base):
     address = Column(String, nullable=True)
     status = Column(String, nullable=False, default="awaiting_payment")
     idempotency_key = Column(String(100), nullable=True)
+    inventory_released = Column(Boolean, nullable=False, default=False, server_default=expression.false())
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
@@ -113,6 +114,24 @@ class OrderORM(Base):
     items_rel = relationship("OrderItemORM", cascade="all, delete-orphan", order_by="OrderItemORM.id")
     status_log_rel = relationship("OrderStatusLogORM", cascade="all, delete-orphan",
                                   order_by="OrderStatusLogORM.id")
+    payments_rel = relationship("PaymentORM", cascade="all, delete-orphan",
+                                order_by="PaymentORM.id")
+
+
+class PaymentORM(Base):
+    __tablename__ = "payments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=False, index=True)
+    attempt_key = Column("idempotence_key", String, unique=True, nullable=False)
+    provider = Column(String, nullable=False, default="demo", server_default="demo")
+    payment_method = Column(String, nullable=False, default="unknown", server_default="unknown")
+    status = Column(String, nullable=False, default="pending", server_default="pending")
+    amount = Column(Numeric(14, 2), nullable=False)
+    currency = Column(String(3), nullable=False, default="RUB", server_default="RUB")
+    paid_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
 class OrderItemORM(Base):

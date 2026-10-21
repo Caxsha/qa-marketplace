@@ -105,11 +105,11 @@ def main(reset: bool = False):
                     stock_quantity=item["stock_quantity"], duration_days=item["duration_days"],
                 ))
             db.commit()
-            # счётчик id нужно подвинуть: позиции вставлены с готовыми номерами
-            db.execute(text(
-                "SELECT setval(pg_get_serial_sequence('items', 'id'), (SELECT MAX(id) FROM items))"
-            ))
-            db.commit()
+            if db.bind.dialect.name == "postgresql":
+                db.execute(text(
+                    "SELECT setval(pg_get_serial_sequence('items', 'id'), (SELECT MAX(id) FROM items))"
+                ))
+                db.commit()
             print("Справочники и товары загружены")
         else:
             print("Таблица items уже содержит данные, пропускаю")
