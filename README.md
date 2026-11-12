@@ -34,10 +34,7 @@ python -m unittest discover -s tests -v
 
 Отдельный набор прямых REST API-проверок пока не добавлен. Для браузера есть Playwright-сценарий оформления заказа и демо-оплаты. GitHub Actions применяет миграции на временной SQLite-базе и запускает unit- и browser-тесты.
 
-Playwright-сценарий пропускается, если `E2E_BASE_URL` не задан. Для его запуска
-установите `python -m pip install -r requirements-test.txt`, Chromium командой
-`python -m playwright install chromium` и укажите URL приложения, подключённого
-к отдельной тестовой базе.
+Playwright-сценарий пропускается, если `E2E_BASE_URL` не задан. Для его запуска установите `python -m pip install -r requirements-test.txt`, Chromium командой `python -m playwright install chromium` и укажите URL приложения, подключённого к отдельной тестовой базе.
 
 ## Функциональность приложения
 
@@ -61,7 +58,7 @@ DATABASE_URL=postgresql://postgres:password@localhost:5432/qa_marketplace
 JWT_SECRET_KEY=replace-with-a-random-secret-at-least-32-characters-long
 ```
 
-Не добавляйте `.env` в Git. Команды для PowerShell из корня проекта:
+Команды для PowerShell из корня проекта:
 
 ```powershell
 python -m venv .venv
