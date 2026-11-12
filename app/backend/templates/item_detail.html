@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}{{ item.name }} — Магазин мамы{% endblock %}
+
+{% block content %}
+<section class="breadcrumbs-bar">
+    <div class="container">
+        <a href="/shop">Главная</a> › <a href="/shop/catalog">Каталог</a> › <span>{{ item.name }}</span>
+    </div>
+</section>
+
+<section class="section item-detail-section">
+    <div class="container item-detail-layout">
+        <div class="item-detail-image">
+            <img src="https://placehold.co/600x600/e8dfd8/4a3427?text={{ item.name|urlencode }}" alt="{{ item.name }}">
+        </div>
+
+        <div class="item-detail-info">
+            <div class="item-detail-badges">
+                {% if item.item_type == 'service' %}
+                    <span class="badge badge-service">Услуга</span>
+                {% else %}
+                    <span class="badge badge-product">Товар</span>
+                {% endif %}
+                <span class="item-category">{{ item.category }}</span>
+            </div>
+
+            <h1>{{ item.name }}</h1>
+
+            {% if item.item_type == 'service' %}
+                <div class="item-detail-price">от {{ item.price|int }} ₽</div>
+            {% else %}
+                <div class="item-detail-price">{{ item.price|int }} ₽</div>
+            {% endif %}
+
+            {% if item.description %}
+                <p class="item-detail-description">{{ item.description }}</p>
+            {% endif %}
+
+            {% if item.stock_quantity is not none %}
+                <div class="availability {% if item.stock_quantity == 0 %}availability-out{% endif %}">
+                    <span class="dot"></span>
+                    {% if item.stock_quantity > 5 %}Есть в наличии
+                    {% elif item.stock_quantity > 0 %}Осталось {{ item.stock_quantity }} шт.
+                    {% else %}Нет в наличии{% endif %}
+                </div>
+            {% endif %}
+            {% if item.duration_days is not none %}
+                <div class="availability">
+                    <span class="dot"></span>
+                    {{ icon('timer') }}  Срок выполнения: {{ item.duration_days }} дн.
+                </div>
+            {% endif %}
+
+            <div class="item-detail-actions">
+                <form method="post" action="/shop/cart/add" class="item-detail-form"
+                      hx-post="/shop/cart/add" hx-target="#toast" hx-swap="innerHTML">
+                    <input type="hidden" name="item_id" value="{{ item.id }}">
+                    {% if item.item_type == 'product' %}
+                        <div class="qty-stepper">
+                            <button type="button" class="qty-btn" onclick="changeQty(-1)">−</button>
+                            <input type="number" id="qty-value" name="quantity" value="1" min="1"
+                                {% if item.stock_quantity %}max="{{ item.stock_quantity }}"{% endif %} readonly>
+                            <button type="button" class="qty-btn" onclick="changeQty(1)">+</button>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-detail-action" {% if item.stock_quantity == 0 %}disabled{% endif %}>
+                            {% if item.stock_quantity == 0 %}Нет в наличии{% else %}В корзину · {{ item.price|int }} ₽{% endif %}
+                        </button>
+                    {% else %}
+                        <input type="hidden" name="quantity" value="1">
+                        <button type="submit" class="btn btn-primary btn-detail-action btn-service">
+                            Заказать · от {{ item.price|int }} ₽
+                        </button>
+                    {% endif %}
+                </form>
+            </div>
+
+            <a href="/shop/catalog" class="back-link">← Назад</a>
+        </div>
+    </div>
+</section>
+
+<script>
+    const maxQty = {{ item.stock_quantity if item.stock_quantity is not none else 9999 }};
+    function changeQty(delta) {
+        const input = document.getElementById('qty-value');
+        let qty = parseInt(input.value) + delta;
+        qty = Math.max(1, Math.min(qty, maxQty));
+        input.value = qty;
+    }
+</script>
+{% endblock %}

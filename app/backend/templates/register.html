@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Регистрация — Магазин мамы{% endblock %}
+
+{% block content %}
+<section class="auth-page">
+    <div class="auth-card">
+        <p class="auth-eyebrow">ДОБРО ПОЖАЛОВАТЬ</p>
+        <h1 class="auth-title">Регистрация</h1>
+        <p class="auth-subtitle">Создайте аккаунт, чтобы покупки стали ещё удобнее</p>
+
+        {% if error %}
+        <div class="form-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" action="/shop/register">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" class="form-control" placeholder="you@example.com" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Пароль</label>
+                <input type="password" id="password" name="password" class="form-control" placeholder="Не менее 8 символов" minlength="8" required>
+            </div>
+            <label class="consent-label">
+                <input type="checkbox" name="agree" value="1" required>
+                <span>Я принимаю <a href="/shop/info/privacy" target="_blank">политику конфиденциальности</a> и <a href="/shop/info/offer" target="_blank">оферту</a></span>
+            </label>
+            <button type="submit" class="btn btn-primary btn-auth">Зарегистрироваться</button>
+        </form>
+
+        <p class="auth-footer">Уже есть аккаунт? <a href="/shop/login">Войти</a></p>
+    </div>
+</section>
+{% endblock %}

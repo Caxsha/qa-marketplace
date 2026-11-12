@@ -1,0 +1,35 @@
+{% extends "admin/_layout.html" %}
+
+{% block admin_content %}
+<div class="filter-pills">
+    <a href="/shop/admin/orders" class="{% if not selected_status %}active{% endif %}">Все ({{ counts['all'] }})</a>
+    {% for s in statuses %}
+    <a href="/shop/admin/orders?status={{ s }}" class="{% if selected_status == s %}active{% endif %}">{{ s|status_label }} ({{ counts[s] }})</a>
+    {% endfor %}
+</div>
+
+{% if orders %}
+<div class="table-scroll">
+    <table class="admin-table">
+        <thead>
+            <tr><th>№</th><th>Дата</th><th>Покупатель</th><th>Получение</th><th>Сумма</th><th>Статус</th><th></th></tr>
+        </thead>
+        <tbody>
+        {% for order in orders %}
+            <tr>
+                <td><a href="/shop/admin/orders/{{ order.id }}">№{{ order.id }}</a></td>
+                <td>{{ order.created_at.strftime('%d.%m.%Y %H:%M') }}</td>
+                <td>{{ order.user_rel.login or order.user_rel.email }}</td>
+                <td>{% if order.fulfillment_method == 'delivery' %}Доставка{% else %}Самовывоз{% endif %}</td>
+                <td>{{ order.total|int }} ₽</td>
+                <td><span class="status-badge status-{{ order.status }}">{{ order.status|status_label }}</span></td>
+                <td><a href="/shop/admin/orders/{{ order.id }}">Открыть →</a></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="cart-empty"><p>Заказов с таким статусом нет</p></div>
+{% endif %}
+{% endblock %}

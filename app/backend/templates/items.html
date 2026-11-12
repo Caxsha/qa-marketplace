@@ -1,23 +1,453 @@
 {% extends "base.html" %}
 
-{% block title %}Витрина - Магазин мамы{% endblock %}
+{% block title %}Витрина — Магазин мамы{% endblock %}
 
 {% block content %}
-<h2>Каталог товаров и услуг</h2>
-<div class="items-grid">
-    {% for item in items %}
-    <div class="item-card">
-        <h3>{{ item.name }}</h3>
-        <p class="price">{{ item.price }} ₽</p>
-        <p class="category">Категория: {{ item.category }}</p>
-        <p class="type">Тип: {{ "Товар" if item.item_type == "product" else "Услуга" }}</p>
-        {% if item.stock_quantity is not none %}
-            <p class="stock">В наличии: {{ item.stock_quantity }} шт.</p>
-        {% endif %}
-        {% if item.duration_days is not none %}
-            <p class="duration">Срок выполнения: {{ item.duration_days }} дн.</p>
-        {% endif %}
+
+<!-- Главный экран -->
+<section class="hero-section">
+    <div class="container hero-container">
+        <div class="hero-content">
+            <div class="badge-pill">{{ icon('leaf') }} Все с душой и теплом</div>
+
+            <h1>Домашние продукты<br>и услуги от Елены</h1>
+
+            <p class="hero-subtitle">
+                Настоящая домашняя выпечка, яйца от своих кур и помощь
+                с праздничным столом — всё как будто от мамы,
+                потому что это и правда так.
+            </p>
+
+            <div class="hero-actions">
+                <a href="/shop/catalog" class="btn btn-primary">
+                    Смотреть каталог →
+                </a>
+
+                <a href="#how-it-works" class="btn btn-outline">
+                    Как это работает
+                </a>
+            </div>
+
+            <ul class="hero-features">
+                <li>{{ icon('truck') }} Доставка или самовывоз</li>
+                <li>{{ icon('card') }} Демо-оплата без списаний</li>
+                <li>{{ icon('heart') }} Всё честно и по-домашнему</li>
+            </ul>
+        </div>
+
+        <div class="hero-image-wrapper">
+            <img
+                src="{{ url_for('static', path='images/hero.jpg') }}"
+                alt="Домашняя кухня"
+                class="hero-blob-img"
+                width="500"
+                height="500"
+                fetchpriority="high"
+            >
+        </div>
     </div>
-    {% endfor %}
-</div>
+</section>
+
+<!-- Категории -->
+<section class="section categories-section" aria-labelledby="categories-title">
+    <div class="container">
+        <h2 id="categories-title" class="section-title">
+            Что у нас есть
+        </h2>
+
+        <p class="section-subtitle">
+            Выбирайте то, что нужно именно вам
+        </p>
+
+        <div class="category-grid">
+            <article class="category-card">
+                <img
+                    src="{{ url_for('static', path='images/products.jpg') }}"
+                    class="category-image"
+                    alt="Домашние продукты"
+                    width="400"
+                    height="300"
+                    loading="lazy"
+                >
+
+                <div class="category-body">
+                    <h3>{{ icon('egg') }}</h3>
+
+                    <p>
+                        Яйца от домашних кур, свежая выпечка,
+                        варенье и другие домашние вкусности.
+                    </p>
+
+                    <a href="/shop/catalog" class="category-link">
+                        Смотреть →
+                    </a>
+                </div>
+            </article>
+
+            <article class="category-card">
+                <img
+                    src="{{ url_for('static', path='images/services.jpg') }}"
+                    class="category-image"
+                    alt="Домашние услуги"
+                    width="400"
+                    height="300"
+                    loading="lazy"
+                >
+
+                <div class="category-body">
+                    <h3>{{ icon('party') }}</h3>
+
+                    <p>
+                        Оформление праздничного стола и консультации
+                        по меню для любого события.
+                    </p>
+
+                    <a href="/shop/catalog" class="category-link">
+                        Смотреть →
+                    </a>
+                </div>
+            </article>
+
+            <article class="category-card">
+                <img
+                    src="{{ url_for('static', path='images/sets.jpg') }}"
+                    class="category-image"
+                    alt="Подарочные наборы"
+                    width="400"
+                    height="300"
+                    loading="lazy"
+                >
+
+                <div class="category-body">
+                    <h3>{{ icon('gift') }}</h3>
+
+                    <p>
+                        Красиво упакованные корзины с домашними
+                        продуктами — идеальный подарок.
+                    </p>
+
+                    <a href="/shop/catalog" class="category-link">
+                        Смотреть →
+                    </a>
+                </div>
+            </article>
+        </div>
+
+        <div class="category-controls" id="category-controls" hidden>
+            <button type="button" class="cat-nav-btn" id="cat-prev" aria-label="Предыдущая категория">←</button>
+            <div class="cat-dots" id="cat-dots"></div>
+            <button type="button" class="cat-nav-btn" id="cat-next" aria-label="Следующая категория">→</button>
+        </div>
+
+    </div>
+</section>
+
+<!-- Популярные позиции -->
+<section
+    id="catalog"
+    class="section catalog-section"
+    aria-labelledby="catalog-title"
+>
+    <div class="container">
+        <h2 id="catalog-title" class="section-title">
+            Популярные позиции
+        </h2>
+
+        <p class="section-subtitle">
+            Чаще всего заказывают — проверено временем
+        </p>
+
+        <div class="items-grid-popular">
+            {% for item in items[:6] %}
+                {% include "_item_card.html" %}
+            {% else %}
+                <p class="empty-catalog-message">
+                    Пока здесь нет популярных позиций.
+                    Загляните в каталог немного позже.
+                </p>
+            {% endfor %}
+        </div>
+
+        <div class="view-catalog-wrapper">
+            <a href="/shop/catalog" class="btn btn-outline">
+                Весь каталог →
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Как это работает -->
+<section
+    id="how-it-works"
+    class="section steps-section"
+    aria-labelledby="steps-title"
+>
+    <div class="container">
+        <h2 id="steps-title" class="section-title text-center">
+            Как это работает
+        </h2>
+
+        <p class="section-subtitle text-center">
+            Всё просто и по-человечески — без лишней бюрократии
+        </p>
+
+        <div class="steps-grid">
+            <article class="step-item">
+                <div class="step-icon-circle" aria-hidden="true">
+                    {{ icon('bag') }}
+                </div>
+
+                <span class="step-number">ШАГ 01</span>
+
+                <h4>Выбираете товар или услугу</h4>
+
+                <p>
+                    Смотрите каталог, добавляйте в корзину
+                    или пишите напрямую — как удобно.
+                </p>
+            </article>
+
+            <article class="step-item">
+                <div class="step-icon-circle" aria-hidden="true">
+                    {{ icon('list') }}
+                </div>
+
+                <span class="step-number">ШАГ 02</span>
+
+                <h4>Оформляете заказ</h4>
+
+                <p>
+                    Выбираете доставку или самовывоз.
+                    Я свяжусь с вами для подтверждения.
+                </p>
+            </article>
+
+            <article class="step-item">
+                <div class="step-icon-circle" aria-hidden="true">
+                    {{ icon('card') }}
+                </div>
+
+                <span class="step-number">ШАГ 03</span>
+
+                <h4>Демо-оплата</h4>
+
+                <p>
+                    Можно имитировать оплату картой или СБП. Реальные списания не выполняются.
+                </p>
+            </article>
+        </div>
+    </div>
+</section>
+
+<!-- Автоматическая прокрутка категорий на мобильных устройствах -->
+<script>
+(function () {
+    'use strict';
+
+    const track = document.querySelector('.category-grid');
+    const controls = document.getElementById('category-controls');
+    if (!track || !controls) return;
+
+    const prevBtn = document.getElementById('cat-prev');
+    const nextBtn = document.getElementById('cat-next');
+    const dotsBox = document.getElementById('cat-dots');
+    const cards = Array.from(track.children);
+
+    const mobileQuery = window.matchMedia('(max-width: 900px)');
+    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+    const SPEED = 28;          // скорость автодвижения, px в секунду
+    const END_PAUSE = 1500;    // пауза на краях ленты, мс
+    const RESUME_DELAY = 5000; // через сколько мс после касания автодвижение вернётся
+
+    let rafId = null;
+    let resumeTimer = null;
+    let lastTs = 0;
+    let holdUntil = 0;
+    let pos = 0;
+    let dir = 1;
+    let paused = false;
+    let touching = false;
+    let inView = false;
+    let pageVisible = !document.hidden;
+    let activeIndex = -1;
+    let scrollTicking = false;
+
+    function autoEnabled() {
+        return mobileQuery.matches && !reducedMotionQuery.matches;
+    }
+
+    /* ---------- точки и стрелки ---------- */
+
+    const dots = cards.map(function (card, i) {
+        const dot = document.createElement('button');
+        dot.type = 'button';
+        dot.className = 'cat-dot';
+        const title = card.querySelector('h3');
+        dot.setAttribute('aria-label', title ? title.textContent.trim() : 'Категория ' + (i + 1));
+        dot.addEventListener('click', function () { interact(); goTo(i); });
+        dotsBox.appendChild(dot);
+        return dot;
+    });
+
+    function maxScroll() {
+        return track.scrollWidth - track.clientWidth;
+    }
+
+    function cardStep() {
+        return cards.length > 1 ? cards[1].offsetLeft - cards[0].offsetLeft : 0;
+    }
+
+    // Куда нужно прокрутить ленту, чтобы карточка i встала у левого края
+    function targetFor(i) {
+        const trackLeft = track.getBoundingClientRect().left;
+        const cardLeft = cards[i].getBoundingClientRect().left - trackLeft + track.scrollLeft;
+        const padLeft = parseFloat(getComputedStyle(track).paddingLeft) || 0;
+        return Math.max(0, Math.min(cardLeft - padLeft, maxScroll()));
+    }
+
+    // Какая карточка сейчас ближе всего к центру ленты
+    function currentIndex() {
+        if (track.scrollLeft <= 4) return 0;
+        if (track.scrollLeft >= maxScroll() - 4) return cards.length - 1;
+        const trackLeft = track.getBoundingClientRect().left;
+        const mid = track.clientWidth / 2;
+        let best = 0;
+        let bestDist = Infinity;
+        cards.forEach(function (card, i) {
+            const r = card.getBoundingClientRect();
+            const dist = Math.abs(r.left - trackLeft + r.width / 2 - mid);
+            if (dist < bestDist) { bestDist = dist; best = i; }
+        });
+        return best;
+    }
+
+    function goTo(i) {
+        i = Math.max(0, Math.min(i, cards.length - 1));
+        track.scrollTo({
+            left: targetFor(i),
+            behavior: reducedMotionQuery.matches ? 'auto' : 'smooth'
+        });
+    }
+
+    function updateActive() {
+        const idx = currentIndex();
+        if (idx === activeIndex) return;
+        activeIndex = idx;
+        dots.forEach(function (dot, i) {
+            dot.classList.toggle('is-active', i === idx);
+            dot.setAttribute('aria-current', i === idx ? 'true' : 'false');
+        });
+        prevBtn.disabled = idx === 0;
+        nextBtn.disabled = idx === cards.length - 1;
+    }
+
+    // Кнопки показываем, только если лента реально прокручивается минимум на шаг
+    function layout() {
+        const scrollable = mobileQuery.matches && cards.length > 1 && maxScroll() >= cardStep();
+        controls.hidden = !scrollable;
+        updateActive();
+    }
+
+    prevBtn.addEventListener('click', function () { interact(); goTo(currentIndex() - 1); });
+    nextBtn.addEventListener('click', function () { interact(); goTo(currentIndex() + 1); });
+
+    track.addEventListener('scroll', function () {
+        if (scrollTicking) return;
+        scrollTicking = true;
+        requestAnimationFrame(function () {
+            scrollTicking = false;
+            updateActive();
+        });
+    }, { passive: true });
+
+    window.addEventListener('resize', layout);
+    window.addEventListener('load', layout);
+
+    /* ---------- плавное автодвижение ---------- */
+
+    function frame(ts) {
+        rafId = requestAnimationFrame(frame);
+
+        const dt = lastTs ? Math.min(ts - lastTs, 64) : 0;
+        lastTs = ts;
+        if (ts < holdUntil) return;
+
+        const max = maxScroll();
+        if (max <= 1) return;
+
+        pos += dir * SPEED * dt / 1000;
+        if (pos >= max) {
+            pos = max; dir = -1; holdUntil = ts + END_PAUSE;
+        } else if (pos <= 0) {
+            pos = 0; dir = 1; holdUntil = ts + END_PAUSE;
+        }
+        track.scrollLeft = pos;
+    }
+
+    function run() {
+        if (rafId !== null || paused || !autoEnabled() || !inView || !pageVisible) return;
+        pos = track.scrollLeft;
+        lastTs = 0;
+        rafId = requestAnimationFrame(frame);
+    }
+
+    function halt() {
+        if (rafId !== null) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+        }
+    }
+
+    // Любое действие пользователя: стоп, и через RESUME_DELAY снова вперёд
+    function interact() {
+        halt();
+        paused = true;
+        clearTimeout(resumeTimer);
+        resumeTimer = setTimeout(function () {
+            if (touching) return;
+            paused = false;
+            run();
+        }, RESUME_DELAY);
+    }
+
+    function updateState() {
+        track.classList.toggle('is-auto', autoEnabled());
+        halt();
+        run();
+        layout();
+    }
+
+    track.addEventListener('touchstart', function () { touching = true; interact(); }, { passive: true });
+    ['touchend', 'touchcancel'].forEach(function (name) {
+        track.addEventListener(name, function () { touching = false; interact(); }, { passive: true });
+    });
+    track.addEventListener('pointerdown', interact);
+    track.addEventListener('wheel', interact, { passive: true });
+
+    document.addEventListener('visibilitychange', function () {
+        pageVisible = !document.hidden;
+        if (pageVisible) { run(); } else { halt(); }
+    });
+
+    function onChange(mq, fn) {
+        if (mq.addEventListener) { mq.addEventListener('change', fn); }
+        else { mq.addListener(fn); }
+    }
+    onChange(mobileQuery, updateState);
+    onChange(reducedMotionQuery, updateState);
+
+    if ('IntersectionObserver' in window) {
+        new IntersectionObserver(function (entries) {
+            inView = entries[0].isIntersecting;
+            if (inView) { run(); } else { halt(); }
+        }, { threshold: 0.5 }).observe(track);
+    } else {
+        inView = true;
+    }
+
+    updateState();
+})();
+</script>
+
 {% endblock %}

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Оформление заказа — Магазин мамы{% endblock %}
+
+{% block content %}
+<section class="cart-header">
+    <div class="container">
+        <p class="auth-eyebrow">ПОЧТИ ГОТОВО</p>
+        <h1>Оформление заказа</h1>
+        <p class="section-subtitle">Проверьте состав заказа и выберите удобный способ получения</p>
+    </div>
+</section>
+
+<section class="section checkout-section">
+    <div class="container checkout-layout">
+        <div class="order-summary-card">
+            <h3>Ваш заказ</h3>
+            {% for ci in cart.items %}
+            <div class="order-summary-item">
+                <img src="https://placehold.co/80x80/e8dfd8/4a3427?text={{ ci.name|urlencode }}" alt="{{ ci.name }}">
+                <div class="order-summary-item-info">
+                    <strong>{{ ci.name }}</strong>
+                    <small>{% if ci.item_type == 'service' %}от {% endif %}{{ ci.price|int }} ₽ × {{ ci.quantity }}</small>
+                </div>
+                <div class="order-summary-item-price">{{ ci.subtotal|int }} ₽</div>
+            </div>
+            {% endfor %}
+            <div class="order-summary-total">
+                <span>Итого</span>
+                <strong>{{ cart.total|int }} ₽</strong>
+            </div>
+        </div>
+
+        <div class="fulfillment-card">
+            <h3>Способ получения</h3>
+
+            {% if error %}
+            <div class="form-error">{{ error }}</div>
+            {% endif %}
+
+            <form method="post" action="/shop/checkout">
+                <div class="type-toggle fulfillment-toggle">
+                    <label class="type-option {% if fulfillment_method != 'pickup' %}active{% endif %}">
+                        <input type="radio" name="fulfillment_method" value="delivery"
+                               {% if fulfillment_method != 'pickup' %}checked{% endif %}
+                               onchange="toggleAddress(true, this)">
+                        Доставка
+                    </label>
+                    <label class="type-option {% if fulfillment_method == 'pickup' %}active{% endif %}">
+                        <input type="radio" name="fulfillment_method" value="pickup"
+                               {% if fulfillment_method == 'pickup' %}checked{% endif %}
+                               onchange="toggleAddress(false, this)">
+                        Самовывоз
+                    </label>
+                </div>
+
+                <div class="form-group" id="address-group"
+                     style="{% if fulfillment_method == 'pickup' %}display:none;{% endif %}">
+                    <label for="address">Адрес доставки</label>
+                    <input type="text" id="address" name="address" class="form-control"
+                           placeholder="Улица, дом, квартира" value="{{ address or '' }}">
+                    <p class="field-hint">Время и стоимость доставки уточним при подтверждении.</p>
+                </div>
+
+                <p class="cart-summary-note">Подтверждая заказ, вы принимаете <a href="/shop/info/offer">оферту</a>.</p>
+                <button type="submit" class="btn btn-primary btn-checkout">Оформить заказ</button>
+                <p class="cart-summary-note">На следующем шаге доступна демо-оплата. Реальные списания не выполняются.</p>
+            </form>
+        </div>
+    </div>
+</section>
+
+<script>
+    function toggleAddress(show, el) {
+        document.getElementById('address-group').style.display = show ? 'block' : 'none';
+        document.querySelectorAll('.fulfillment-toggle .type-option').forEach(o => o.classList.remove('active'));
+        el.closest('.type-option').classList.add('active');
+    }
+</script>
+{% endblock %}

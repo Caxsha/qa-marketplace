@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Заказ №{{ order.id }} — Магазин мамы{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container order-confirmation">
+        <h1>Заказ №{{ order.id }}</h1>
+        <p class="section-subtitle">
+            <span class="status-badge status-{{ order.status.value }}">{{ order.status|status_label }}</span>
+            · от {{ order.created_at.strftime('%d.%m.%Y') }}
+        </p>
+
+        <div class="order-summary-card">
+            {% for oi in order.items %}
+            <div class="order-summary-item">
+                <div class="order-summary-item-info">
+                    <strong>{{ oi.name }}</strong>
+                    <small>{{ oi.price|int }} ₽ × {{ oi.quantity }}</small>
+                </div>
+                <div class="order-summary-item-price">{{ oi.subtotal|int }} ₽</div>
+            </div>
+            {% endfor %}
+            <div class="order-summary-total">
+                <span>Итого</span>
+                <strong>{{ order.total|int }} ₽</strong>
+            </div>
+        </div>
+
+        <p>
+            {% if order.fulfillment_method == 'delivery' %}Доставка по адресу: {{ order.address }}
+            {% else %}Самовывоз{% endif %}
+        </p>
+
+        {% if order.status.value == 'awaiting_payment' %}
+        <div class="payment-note">
+            {% if payment_error %}<p>{{ payment_error }}</p>{% endif %}
+            <strong>Заказ ожидает оплаты.</strong> Остатки товара зарезервированы за заказом.
+            {% if demo_payments_enabled %}
+            <p>Это демонстрация: деньги не списываются, данные карты и банковского счёта не запрашиваются.</p>
+            <div class="admin-actions mt-20">
+                <form method="post" action="/shop/orders/{{ order.id }}/demo-pay">
+                    <input type="hidden" name="method" value="card">
+                    <button type="submit" class="btn btn-primary">Имитировать оплату картой</button>
+                </form>
+                <form method="post" action="/shop/orders/{{ order.id }}/demo-pay">
+                    <input type="hidden" name="method" value="sbp">
+                    <button type="submit" class="btn btn-outline">Имитировать оплату по СБП</button>
+                </form>
+            </div>
+            {% else %}
+            <p>Демо-оплата отключена в production.</p>
+            {% endif %}
+        </div>
+        {% elif order.status.value == 'paid' %}
+        <div class="payment-note">
+            {% if payment and payment.provider == 'demo' %}
+            Демо-оплата записана ({{ 'карта' if payment.payment_method == 'card' else 'СБП' }}), {{ payment.amount|int }} {{ payment.currency }}. Реального списания не было.
+            {% else %}
+            Оплата отмечена. Заказ принят в работу.
+            {% endif %}
+        </div>
+        {% elif order.status.value == 'cancelled' %}
+        <div class="payment-note">Заказ отменён. Зарезервированные товары возвращены в наличие.</div>
+        {% endif %}
+
+        <a href="/shop/account" class="btn btn-primary">В личный кабинет</a>
+        <a href="/shop/catalog" class="btn btn-outline">В каталог</a>
+    </div>
+</section>
+{% endblock %}

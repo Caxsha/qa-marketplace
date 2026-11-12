@@ -1,0 +1,34 @@
+{% extends "admin/_layout.html" %}
+
+{% block admin_content %}
+<div class="admin-toolbar">
+    <form method="get" action="/shop/admin/users" class="admin-search">
+        <input type="search" name="q" value="{{ q }}" placeholder="Поиск по логину или email" class="form-control">
+        <button type="submit" class="btn btn-outline btn-sm">Найти</button>
+    </form>
+    <span class="field-hint">Найдено: {{ rows|length }}</span>
+</div>
+
+<div class="table-scroll">
+    <table class="admin-table">
+        <thead>
+            <tr><th>ID</th><th>Логин</th><th>Email</th><th>Телефон</th><th>Роль</th><th>Заказов</th><th>Регистрация</th></tr>
+        </thead>
+        <tbody>
+        {% for user, orders_count in rows %}
+            <tr>
+                <td>{{ user.id }}</td>
+                <td>{{ user.login or '—' }}</td>
+                <td>{{ user.email }}</td>
+                <td>{{ user.phone or '—' }}</td>
+                <td>{% if user.role == 'admin' %}<span class="role-badge">Администратор</span>{% else %}Пользователь{% endif %}</td>
+                <td>{{ orders_count }}</td>
+                <td>{{ user.created_at.strftime('%d.%m.%Y') if user.created_at else '—' }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="7">Ничего не найдено</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

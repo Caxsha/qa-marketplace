@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Вход — Магазин мамы{% endblock %}
+
+{% block content %}
+<section class="auth-page">
+    <div class="auth-card">
+        <p class="auth-eyebrow">С ВОЗВРАЩЕНИЕМ</p>
+        <h1 class="auth-title">Вход</h1>
+        <p class="auth-subtitle">Войдите, чтобы продолжить покупки</p>
+
+        {% if error %}
+        <div class="form-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" action="/shop/login">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" class="form-control" placeholder="you@example.com" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Пароль</label>
+                <input type="password" id="password" name="password" class="form-control" placeholder="Введите пароль" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-auth">Войти</button>
+        </form>
+
+        <p class="auth-footer">Нет аккаунта? <a href="/shop/register">Зарегистрироваться</a></p>
+    </div>
+</section>
+{% endblock %}

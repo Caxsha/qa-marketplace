@@ -2,22 +2,147 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>{% block title %}Магазин мамы{% endblock %}</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+
+    <link rel="stylesheet" href="/static/css/style.css?v=2">
+    <script src="/static/js/htmx.min.js"></script>
 </head>
 <body>
-    <header class="header">
-        <div class="container">
-            <h1 class="logo">Магазин мамы</h1>
+
+    <!-- Шапка сайта -->
+    <header class="navbar">
+        <div class="container nav-container">
+
+            <a href="/shop" class="logo">
+                <span class="logo-icon">{{ icon('basket') }}</span>
+
+                <div class="logo-text">
+                    <strong>Магазин мамы</strong>
+                    <small>домашние продукты и услуги</small>
+                </div>
+            </a>
+
+            <input
+                type="checkbox"
+                id="nav-toggle"
+                class="nav-toggle"
+            >
+
+            <label
+                for="nav-toggle"
+                class="nav-burger"
+                aria-label="Открыть меню"
+            >
+                ☰
+            </label>
+
+            <nav class="nav-links">
+                <a href="/shop/catalog">{{ icon('catalog') }} Каталог</a>
+
+                <a href="/shop/cart">
+                    {{ icon('cart') }} Корзина
+                    <span
+                        id="cart-badge"
+                        class="cart-badge"
+                        hx-get="/shop/cart/count"
+                        hx-trigger="load"
+                        hx-swap="innerHTML"
+                    ></span>
+                </a>
+
+                {% if current_user and current_user.is_admin %}
+                    <a href="/shop/admin">{{ icon('admin') }} Админ-панель</a>
+                {% endif %}
+
+                {% if current_user %}
+                    <a href="/shop/account">{{ icon('user') }} Личный кабинет</a>
+                {% else %}
+                    <a href="/shop/login">{{ icon('user') }} Войти</a>
+                {% endif %}
+
+                <a href="/shop/catalog" class="btn btn-primary btn-sm">
+                    Заказать
+                </a>
+            </nav>
+
         </div>
     </header>
-    <main class="container content">
+
+    <!-- Основной контент страниц -->
+    <main class="main-content">
         {% block content %}{% endblock %}
     </main>
+
+    <!-- Подвал сайта -->
     <footer class="footer">
-        <div class="container">
-            <p>&copy; 2026 Магазин мамы. Все права защищены.</p>
+        <div class="container footer-top">
+            <div class="footer-brand">
+                <a href="/shop" class="logo logo-light">
+                    <span class="logo-icon">{{ icon('basket') }}</span>
+                    <strong>{{ shop.name }}</strong>
+                </a>
+                <p class="footer-desc">{{ shop.tagline }}</p>
+                <ul class="footer-badges">
+                    <li>{{ icon('card') }} Демо-оплата (без списаний)</li>
+                    <li>{{ icon('truck') }} Доставка и самовывоз</li>
+                </ul>
+            </div>
+
+            <nav class="footer-col" aria-label="Покупателям">
+                <h5>Покупателям</h5>
+                <ul>
+                 <li><a href="/shop/catalog">Каталог</a></li>
+                    <li><a href="/shop/cart">Корзина</a></li>
+                    {% if current_user %}
+                        <li><a href="/shop/account">Личный кабинет</a></li>
+                    {% else %}
+                        <li><a href="/shop/login">Войти</a></li>
+                    {% endif %}
+                    <li><a href="/shop/info/delivery">Доставка и оплата</a></li>
+                    <li><a href="/shop/info/returns">Возврат и обмен</a></li>
+                    {% if current_user and current_user.is_admin %}
+                        <li><a href="/shop/admin">{{ icon('admin') }} Админ-панель</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+
+            <div class="footer-col footer-contacts">
+                <h5>Контакты</h5>
+                <ul class="contact-list">
+                    <li><a href="{{ shop.phone_href }}" class="footer-phone">{{ shop.phone }}</a></li>
+                    {% if shop.email %}<li><a href="mailto:{{ shop.email }}">{{ shop.email }}</a></li>{% endif %}
+                    <li>{{ icon('pin') }} {{ shop.city }}, {{ shop.pickup_note }}</li>
+                    <li>{{ icon('clock') }} {{ shop.hours }}</li>
+                </ul>
+                {% if shop.telegram or shop.whatsapp or shop.vk %}
+                <div class="footer-social">
+                    {% if shop.telegram %}<a class="social-btn" href="{{ shop.telegram }}" target="_blank" rel="noopener noreferrer">Telegram</a>{% endif %}
+                    {% if shop.whatsapp %}<a class="social-btn" href="{{ shop.whatsapp }}" target="_blank" rel="noopener noreferrer">WhatsApp</a>{% endif %}
+                    {% if shop.vk %}<a class="social-btn" href="{{ shop.vk }}" target="_blank" rel="noopener noreferrer">VK</a>{% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="container footer-bottom">
+            <div class="footer-bottom-main">
+                <p>© {{ current_year }} {{ shop.name }}</p>
+                {% if shop.seller_name %}
+                <p class="footer-seller">{{ shop.seller_status }} {{ shop.seller_name }}{% if shop.seller_inn %} · ИНН {{ shop.seller_inn }}{% endif %}</p>
+                {% endif %}
+            </div>
+            <nav class="footer-legal" aria-label="Правовая информация">
+                <a href="/shop/info/privacy">Политика конфиденциальности</a>
+                <a href="/shop/info/offer">Публичная оферта</a>
+            </nav>
+            <a href="#" class="to-top">Наверх ↑</a>
         </div>
     </footer>
+
+    <!-- Контейнер для уведомлений -->
+    <div id="toast" class="toast-container"></div>
+
 </body>
 </html>

@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import Depends, HTTPException, status, Request
+from fastapi import Depends, HTTPException, status, Request, Response
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
@@ -10,7 +10,11 @@ from sqlalchemy.orm import Session
 from app.backend.database import get_db
 from app.backend.db_models import UserORM
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-secret-change-me")
+
+
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
+if len(SECRET_KEY) < 32:
+    raise RuntimeError("JWT_SECRET_KEY не задан или короче 32 символов")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_SECONDS = 24 * 60 * 60
 
@@ -27,9 +31,9 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
     return pwd_context.verify(plain_password, password_hash)
 
 
-def create_access_token(user_id: int) -> str:
+def create_access_token(user_id: int, token_version: int = 0) -> str:
     expire = datetime.now(timezone.utc) + timedelta(seconds=ACCESS_TOKEN_EXPIRE_SECONDS)
-    payload = {"sub": str(user_id), "exp": expire}
+    payload = {"sub": str(user_id), "ver": token_version, "exp": expire}
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -40,6 +44,30 @@ def decode_access_token(token: str) -> Optional[int]:
     except (JWTError, ValueError, TypeError):
         return None
 
+
+def token_matches_user(token: str, user: UserORM) -> bool:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return int(payload.get("ver", 0)) == user.token_version
+    except (JWTError, ValueError, TypeError):
+        return False
+
+def get_current_user_optional(request: Request, db: Session = Depends(get_db)) -> Optional[UserORM]:
+    token = None
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.removeprefix("Bearer ")
+    if token is None:
+        token = request.cookies.get("access_token")
+    if token is None:
+        return None
+
+    user_id = decode_access_token(token)
+    if user_id is None:
+        return None
+
+    user = db.query(UserORM).filter(UserORM.id == user_id).first()
+    return user if user is not None and token_matches_user(token, user) else None
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> UserORM:
     token = None
@@ -59,4 +87,42 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> UserORM
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 
+    if not token_matches_user(token, user):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
     return user
+
+class LoginRequired(Exception):
+    """Нужна авторизация: для веб-страниц это редирект на /shop/login."""
+
+
+class AdminRequired(Exception):
+    """Недостаточно прав: для веб-страниц это страница 403."""
+
+
+def require_admin(current_user: Optional[UserORM] = Depends(get_current_user_optional)) -> UserORM:
+    if current_user is None:
+        raise LoginRequired()
+    if current_user.role != "admin":
+        raise AdminRequired()
+    return current_user
+
+# Хеш-пустышка: пароль проверяется всегда, даже если такого email нет,
+# иначе по времени ответа можно узнать, зарегистрирован ли email
+_DUMMY_HASH = pwd_context.hash("not-a-real-password")
+
+
+def authenticate(user: Optional[UserORM], password: str) -> bool:
+    if user is None:
+        verify_password(password, _DUMMY_HASH)
+        return False
+    return verify_password(password, user.password_hash)
+
+
+def set_auth_cookie(response: Response, request: Request, token: str) -> None:
+    """HttpOnly, SameSite=Lax, а Secure включается сам, если запрос пришёл по HTTPS."""
+    response.set_cookie(
+        key="access_token", value=token, httponly=True,
+        secure=COOKIE_SECURE or request.url.scheme == "https",
+        samesite="lax", max_age=ACCESS_TOKEN_EXPIRE_SECONDS, path="/",
+    )
